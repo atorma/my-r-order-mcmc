@@ -140,12 +140,16 @@ flipNodesInOrder2 <- function(vOrder, logLocalOrderScores, placesToSwitch, maxPa
 
 
 runOrderMCMC <- function(numNodes, maxParents, functLogLocalStructureScore, maxSteps) {
-  mcmcSamples <<- matrix(NA, nrow=0, ncol=numNodes)
-  mcmcLogScores <<- matrix(NA, nrow=0, ncol=numNodes)
+  mcmcSamples <- matrix(NA, nrow=0, ncol=numNodes)
+  mcmcLogScores <- matrix(NA, nrow=0, ncol=numNodes)
   recordStep <- function(vOrder, logOrderScores) {
     mcmcSamples <<- rbind(mcmcSamples, vOrder)
     mcmcLogScores <<- rbind(mcmcLogScores, logOrderScores)
   }
+  
+  # This makes MCM about 13% faster than without caching
+  # This seems to cause problems!
+  # getParentSets <- createCachedParentSetsProvider(numNodes, maxParents)
   
   # Initialize
   vOrder <- permute(1:numNodes) # start with a random permutation

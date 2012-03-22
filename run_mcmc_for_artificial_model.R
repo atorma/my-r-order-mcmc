@@ -3,9 +3,6 @@ library("hash")
 library("R.utils")
 library("rbenchmark")
 
-# This makes MCM about 13% faster than without caching
-getParentSets <- createCachedParentSetsProvider(numNodes, maxParents)
-
 # Function for log(score(Xi, Pa(Xi) | D, <))
 functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
@@ -21,22 +18,18 @@ plot(rowSums(result$logScores), type="l")
 # Compute edge probabilities
 sampleIdx <- seq(from=1000, to=numSamples, by=100)
 samples <- result$samples[sampleIdx,]
-mEdgeProb <- matrix(0, numNodes, numNodes)
-for (s in 1:nrow(samples)) { 
-  mEdgeProb <- mEdgeProb + getEdgeProbabilities(samples[s,], maxParents, functLogLocalStructureScore) 
-}
-mEdgeProb <- mEdgeProb/nrow(samples)
+sampleLogScores <- result$logScores[sampleIdx,]
+mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores) 
 
-
-# Compute ROC curve
+# Plot ROC curve
 roc <- getRocCurve(mEdgeProb, mAdj)
-
 xy <- matrix(c(0,1,0,1), 2, 2)
 plot(roc, type="l", xlim=c(0,1), ylim=c(0,1), col="blue")
 lines(xy, col="red")
 
+
 # Exact edge probabilities. BE CAREFUL!
-mExactEdgeProb <- computeExactEdgeProbabilities(numNodes, functLogLocalStructureScore)
+mExactEdgeProb <- getExactEdgeProbabilities(numNodes, maxParents, functLogLocalStructureScore)
 
 exactVersusMcmc <- matrix(NA, nrow=length(mEdgeProb), ncol=2)
 exactVersusMcmc[,1] <- mExactEdgeProb
