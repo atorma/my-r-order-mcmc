@@ -54,6 +54,10 @@ getEdgeProbabilities <- function(mOrders, maxParents, functLogLocalStructureScor
   if (!is.matrix(mOrders)) {
     mOrders <- matrix(mOrders, nrow=1)
   }
+  if (!is.null(mLogLocalOrderScores) && !is.matrix(mLogLocalOrderScores)) {
+    mLogLocalOrderScores <- matrix(mLogLocalOrderScores, nrow=1)
+  }
+  
   numNodes <- ncol(mOrders)
   mEdgeProb <- matrix(0, numNodes, numNodes)
   edges <- permutations(numNodes, 2)
@@ -71,22 +75,23 @@ getEdgeProbabilities <- function(mOrders, maxParents, functLogLocalStructureScor
 getExactEdgeProbabilities <- function(numNodes, maxParents, functLogLocalStructureScore) {
   
   functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
-  functLogOrderScore <- function(vOrder) {
-    return( sum(getLogLocalOrderScores(vOrder, functLogLocalOrderScore)))
+  functLogOrderScores <- function(vOrder) {
+    return( getLogLocalOrderScores(vOrder, functLogLocalOrderScore) )
   }
   
   allOrders <- permutations(numNodes, numNodes, 1:numNodes)
-  # Compute log P(D | <)
-  allOrderLogScores <- apply(as.matrix(allOrders), 1, functLogOrderScore)
-  # Compute P(< | D) assuming P(<) = 1
-  logNormalizer <- getLogSumOfExponentials(allOrderLogScores)
-  allOrderProbs <- exp(allOrderLogScores - logNormalizer)
+  allLogLocalOrderScores <- t(apply(as.matrix(allOrders), 1, functLogOrderScores)) # score for each node (col) in each order (row)
+  allLogOrderScores <- rowSums(allLogLocalOrderScores)
   
-  # Since we're not sampling from posterior, we must do (the normal)
+  # Compute P(< | D) assuming P(<) = 1
+  logNormalizer <- getLogSumOfExponentials(allLogOrderScores)
+  allOrderProbs <- exp(allLogOrderScores - logNormalizer)
+  
+  # Since we're not sampling from posterior, we must do 
   # P(e | D) = sum(P(e | D, <)P(< | D), <) 
   mExactEdgeProb <- matrix(0, numNodes, numNodes)
   for (s in 1:nrow(allOrders)) { 
-    mExactEdgeProb <- mExactEdgeProb + allOrderProbs[s] * getEdgeProbabilities(allOrders[s,], maxParents, functLogLocalStructureScore, allOrderLogScores[s,]) 
+    mExactEdgeProb <- mExactEdgeProb + allOrderProbs[s] * getEdgeProbabilities(allOrders[s,], maxParents, functLogLocalStructureScore, allLogLocalOrderScores[s,]) 
   }
   
   return(mExactEdgeProb)
