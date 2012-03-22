@@ -1,8 +1,3 @@
-library("gtools")
-library("hash")
-library("R.utils")
-library("rbenchmark")
-
 # Function for log(score(Xi, Pa(Xi) | D, <))
 functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
