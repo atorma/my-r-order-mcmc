@@ -29,10 +29,10 @@ getLogLocalDataLikelihood <- function(node, vParents, paramsAndData) {
 
 
 # Precomputes family (parent set) related scores for all families up to maximum family size for each node
-# using the given scoring function functScore(node, vParents).
+# using the given scoring function functScore(node, parents).
 #
-# Returns an accessor function f to the cache such that f(node, parents) returns the log
-# score contribution of the node to P(D | G). 
+# Returns an accessor function f to the cache such that f(node, parents) returns score
+# of the family.
 #
 # This implementation uses a hash map where each key is a string representation of a family: 
 # first parents in ascending order and then their child. The cache is only very slightly worse performing
@@ -111,7 +111,7 @@ getLogLocalStructureScore <- function(node, vParents, vOrder, functLogLocalStruc
 # 
 getLogLocalOrderScore <- function(node, vOrder, maxParents, functLogLocalStructureScore) {
   families <- getParentSets(node, vOrder, 0:maxParents)
-  familyScores <- vector()
+  familyScores <- vector() # TODO do not grow vector
   for (f in 1:length(families)) {
     familyScores[f] <- functLogLocalStructureScore(node, families[[f]], vOrder)
   }
@@ -122,7 +122,7 @@ getLogLocalOrderScore <- function(node, vOrder, maxParents, functLogLocalStructu
 
 # Computes all terms in log(P(D | <)) as a vector using the given scoring function
 getLogLocalOrderScores <- function(vOrder, functLogLocalOrderScore) {
-  logScores <- vector()
+  logScores <- vector() # TODO do not grow vector
   for (node in 1:length(vOrder)) {
     logScores[node] <- functLogLocalOrderScore(node, vOrder)
   }

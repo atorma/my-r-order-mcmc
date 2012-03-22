@@ -1,45 +1,74 @@
-# Computes P(edge | D, <), the posterior probability of an edge given data and a node ordering.
+# Computes the average P(edge | D, <) over given node orderings. If the orderings
+# are samples from P(< | D), then the result will approximate P(edge | D).
 #
 # edge: a vector of two nodes where edge[1] is the parent and edge[2] is the child
-# vOrder: an ordering of nodes
+# mOrder: a matrix where each row is an ordering of nodes
 # maxParents: max number of parents a node can have
 # functLogLocalStructureScore: function returning log P(X, Pa(X) | D, <) for each node X
-getEdgeProbability <- function(edge, vOrder, maxParents, functLogLocalStructureScore) {
-  if (length(edge) != 2) stop("Edge does not contain exactly two nodes")
-  
-  # Compute denominator
-  functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
-  logNodeOrderScore <- functLogLocalOrderScore(edge[2], vOrder)
-  
-  # Log sum of scores over sets with given parent
-  parentSets <- getParentSetsIncludingParent(edge[2], vOrder, 0:maxParents, edge[1])
-  familyScores <- vector()
-  for (p in 1:length(parentSets)) {
-    familyScores[p] <- functLogLocalStructureScore(edge[2], parentSets[[p]], vOrder)
+# targetLogLocalOrderScore (optional): pre-calculated log order score of the target of the edge. must 
+getEdgeProbability <- function(edge, mOrders, maxParents, functLogLocalStructureScore, targetLogLocalOrderScores=NULL) {
+  if (!is.matrix(mOrders)) {
+    mOrders <- matrix(mOrders, nrow=1)
   }
-  logEdgeOrderScore <- getLogSumOfExponentials(familyScores)
   
-  return(exp(logEdgeOrderScore - logNodeOrderScore))
+  if (length(mOrders) == 0) return(NA)
+  if (length(edge) != 2) stop("Edge does not contain exactly two nodes")
+  if (length(targetLogLocalOrderScores) > 0 && (nrow(mOrders) != length(targetLogLocalOrderScores))) stop("Number of orders inconsistent with number of input node scores")
+  
+  if (is.null(targetLogLocalOrderScores)) {
+    functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
+  }
+  
+  # To compute the probability from one order
+  getPr <- function(orderIndex) {
+    vOrder <- mOrders[orderIndex,]
+    targetLogLocalOrderScore <- targetLogLocalOrderScores[orderIndex]
+    
+    # Impossible edge given order
+    if (which(vOrder == edge[1]) > which(vOrder == edge[2])) return(0)
+    
+    # Compute denominator, sum of scores over all families of target edge, if needed
+    if (is.null(targetLogLocalOrderScore)) {
+      targetLogLocalOrderScore <- functLogLocalOrderScore(edge[2], vOrder)
+    }
+    
+    # Log sum of scores over families with given parent
+    parentSets <- getParentSetsIncludingParent(edge[2], vOrder, 0:maxParents, edge[1])
+    familyScores <- numeric(length(parentSets))
+    for (p in 1:length(parentSets)) {
+      familyScores[p] <- functLogLocalStructureScore(edge[2], parentSets[[p]], vOrder)
+    }
+    logEdgeOrderScore <- getLogSumOfExponentials(familyScores)
+    
+    return(exp(logEdgeOrderScore - targetLogLocalOrderScore))
+  }
+  
+  probabilities <- sapply(1:nrow(mOrders), getPr)
+  return(mean(probabilities))
 }
 
-# Computes P(edge | D, <) for all edges.
-getEdgeProbabilities <- function(vOrder, maxParents, functLogLocalStructureScore) {
-  numNodes <- length(vOrder)
+
+# Computes mean P(edge | D, <) for all edges from a given order.
+# See getEdgeProbability
+getEdgeProbabilities <- function(mOrders, maxParents, functLogLocalStructureScore, mLogLocalOrderScores=NULL) {
+  if (!is.matrix(mOrders)) {
+    mOrders <- matrix(mOrders, nrow=1)
+  }
+  numNodes <- ncol(mOrders)
   mEdgeProb <- matrix(0, numNodes, numNodes)
-  for (i in 1:numNodes) {
-    for (j in i:numNodes) {
-      if (i != j) {
-        parent <- vOrder[i]
-        child <- vOrder[j]
-        mEdgeProb[parent, child] <- getEdgeProbability(c(parent,child), vOrder, maxParents, functLogLocalStructureScore)
-      }
-    }
+  edges <- permutations(numNodes, 2)
+  for (i in 1:nrow(edges)) {
+    edge <- edges[i,]
+    parent <- edge[1]
+    child <- edge[2]
+    mEdgeProb[parent, child] <- getEdgeProbability(edge, mOrders, maxParents, functLogLocalStructureScore, mLogLocalOrderScores[,child])
   }
   return(mEdgeProb)
 }
 
-# TODO reuse order log scores when computing edge probability
-getExactEdgeProbabilities <- function(numNodes, functLogLocalStructureScore) {
+# Computes the exact posterior probability P(edge | D) for all edges. 
+# Warning: very slow for more than about 6 nodes!
+getExactEdgeProbabilities <- function(numNodes, maxParents, functLogLocalStructureScore) {
   
   functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
   functLogOrderScore <- function(vOrder) {
@@ -57,7 +86,7 @@ getExactEdgeProbabilities <- function(numNodes, functLogLocalStructureScore) {
   # P(e | D) = sum(P(e | D, <)P(< | D), <) 
   mExactEdgeProb <- matrix(0, numNodes, numNodes)
   for (s in 1:nrow(allOrders)) { 
-    mExactEdgeProb <- mExactEdgeProb + allOrderProbs[s] * getEdgeProbabilities(allOrders[s,], maxParents, functLogLocalStructureScore) 
+    mExactEdgeProb <- mExactEdgeProb + allOrderProbs[s] * getEdgeProbabilities(allOrders[s,], maxParents, functLogLocalStructureScore, allOrderLogScores[s,]) 
   }
   
   return(mExactEdgeProb)

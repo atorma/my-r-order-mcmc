@@ -3,15 +3,12 @@ library("hash")
 library("R.utils")
 library("rbenchmark")
 
-wd <- "~/Hommia/Santsaus/Project in Probabilistic Models (582637)/R"
-sourceDir <- "~/Hommia/Santsaus/Project in Probabilistic Models (582637)/R/sources"
-
-setwd(wd)
+sourceDir <- "~/Hommia/Santsaus/Project in Probabilistic Models (582637)/my-r-order-mcmc/functions"
 sourceDirectory(sourceDir)
 
-numNodes <- 8
+numNodes <- 6
 cardinalities <- rep(3, numNodes)
 maxParents <- 3
 mAdj <- generateRandomDag(numNodes, maxParents)
-arrThetas <- generateMultinomialParamsUsingWeightParam(mAdj, cardinalities)
-mObs <- generateSamplesFromModel(mAdj, arrThetas, 300)
+arrThetas <- generateMultinomialParams(mAdj, cardinalities)
+mObs <- generateSamplesFromModel(mAdj, arrThetas, 50)

@@ -8,6 +8,7 @@ getParentSets <- function(node, vOrder, size) {
   if (length(nodePos) != 1) stop("Node not found in order")
   if (min(size) < 0) stop("Negative set size")
   
+  # TODO don't grow!
   parentSets <- list() 
   
   if (min(size) == 0) { 
