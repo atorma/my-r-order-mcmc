@@ -91,7 +91,7 @@ mockLogLocalStructureScore <- function(node, vParents, vOrder) {
 }
 
 # all orders have the same score
-logOrderScore <- log( sum( 3*exp(-1) + exp(-2) + exp(-3) + exp(-4) ) )
+logOrderScore <- -1 + log(exp(-1) + exp(-2)) + log(exp(-1) + exp(-3) + exp(-4))
 # all orders have the same probability after normalization
 orderProb <- exp(logOrderScore - log(6*exp(logOrderScore)) )
 
@@ -104,7 +104,7 @@ probEdge2to3 <- exp(-4 - logOrderScore)
 
 # All edges appear in three different orders, xy*, x*y, *xy
 # Then P(edge | D) = sum( P(edge | D)P(< | D), <) is 
-edgeProb <- orderProb*sum(c(probEdge1to2, probEdge1to3, probEdge2to3))
+edgeProb <- orderProb*(probEdge1to2 + probEdge1to3 + probEdge2to3)
 mExactEdgeProbs <- matrix(edgeProb, nrow=numNodes, ncol=numNodes)
 # Self-refering edges obviously impossible
 mExactEdgeProbs[1,1] <- 0
