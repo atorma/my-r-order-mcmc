@@ -19,3 +19,21 @@ sampleIdx <- seq(from=5000, to=numSamples, by=200)
 samples <- result$samples[sampleIdx,]
 sampleLogScores <- result$logScores[sampleIdx,]
 mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores)
+
+# List of edge probabilities
+sourceNames <- character(numNodes^2 - numNodes)
+targetNames <- character(numNodes^2 - numNodes)
+edgeProbs <- numeric(numNodes^2 - numNodes)
+row <- 1
+for (i in 1:numNodes) {
+  for (j in 1:numNodes) {
+    if (i != j) {
+      sourceNames[row] <- varNames[i]
+      targetNames[row] <- varNames[j]
+      edgeProbs[row] <- mEdgeProb[i,j]
+      row <- row+1
+    }
+  }
+}
+edgeRanking <- data.frame(source=sourceNames, target=targetNames, probability=edgeProbs)
+edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing=TRUE), ]
