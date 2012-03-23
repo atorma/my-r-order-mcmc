@@ -7,19 +7,6 @@ mObs[2,] <- c(2, 1, 1)
 mObs[3,] <- c(1, 2, 2) # this observed now twice
 mObs[4,] <- c(1, 1, 3)
 
-vIndex <- vector()
-for (s in 1:nrow(mObs)) {
-  vIndex[s] <- getIndexFromConfig(mObs[s,], cardinalities)
-}
-
-# TODO not needed?
-countData <- countObservations(mObs, cardinalities)
-test_that("Observed vectors compressed to counts indexed so that states of first variable varied first", {
-  expect_that(countData$counts[vIndex[1]], equals(2))
-  expect_that(countData$counts[vIndex[2]], equals(1))
-  expect_that(countData$counts[1], equals(0))
-})
-
 
 stateCounts <- matrix(NA, 3, 4)
 stateCounts[1, 1:3] <- mObs[1,]
