@@ -96,11 +96,11 @@ logOrderScore <- -1 + log(exp(-1) + exp(-2)) + log(exp(-1) + exp(-3) + exp(-4))
 orderProb <- exp(logOrderScore - log(6*exp(logOrderScore)) )
 
 # probability of edge from position 1 to position 2 always same (nodes differ between orders)
-probEdge1to2 <- exp(-2 - logOrderScore)
+probEdge1to2 <- exp(-2 - log(exp(-1) + exp(-2)) )
 # probability of edge from position 1 to position 3 always same (nodes differ between orders)
-probEdge1to3 <- exp(-3 - logOrderScore)
+probEdge1to3 <- exp(-3 - log(exp(-1) + exp(-3) + exp(-4)) )
 # probability of edge from position 2 to position 3 always same (nodes differ between orders)
-probEdge2to3 <- exp(-4 - logOrderScore)
+probEdge2to3 <- exp(-4 - log(exp(-1) + exp(-3) + exp(-4)) )
 
 # All edges appear in three different orders, xy*, x*y, *xy
 # Then P(edge | D) = sum( P(edge | D)P(< | D), <) is 
@@ -110,11 +110,8 @@ mExactEdgeProbs <- matrix(edgeProb, nrow=numNodes, ncol=numNodes)
 mExactEdgeProbs[1,1] <- 0
 mExactEdgeProbs[2,2] <- 0
 mExactEdgeProbs[3,3] <- 0
-print(mExactEdgeProbs)
-
 
 mComputedEdgeProbs <- getExactEdgeProbabilities(numNodes, maxParents, mockLogLocalStructureScore)
-print(mComputedEdgeProbs)
 test_that("Exact edge probabilitites computed correctly when all edges have the same probability", {
   expect_that(mComputedEdgeProbs, equals(mExactEdgeProbs))
 })

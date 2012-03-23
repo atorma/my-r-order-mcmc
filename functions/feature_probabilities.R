@@ -5,7 +5,7 @@
 # mOrder: a matrix where each row is an ordering of nodes
 # maxParents: max number of parents a node can have
 # functLogLocalStructureScore: function returning log P(X, Pa(X) | D, <) for each node X
-# targetLogLocalOrderScore (optional): pre-calculated log order score of the target of the edge. must 
+# targetLogLocalOrderScore (optional): pre-calculated log order scores of the target of the edge for each row in mOrder 
 getEdgeProbability <- function(edge, mOrders, maxParents, functLogLocalStructureScore, targetLogLocalOrderScores=NULL) {
   if (!is.matrix(mOrders)) {
     mOrders <- matrix(mOrders, nrow=1)
@@ -49,7 +49,11 @@ getEdgeProbability <- function(edge, mOrders, maxParents, functLogLocalStructure
 
 
 # Computes mean P(edge | D, <) for all edges from a given order.
-# See getEdgeProbability
+#
+# mOrders: a matrix where each row is a node order
+# maxParents: max number of parents a node can have
+# functLogLocalStructureScore: function returning log P(X, Pa(X) | D, <) for each node X
+# mLogLocalOrderScores (optional): a matrix where each column contains pre-calculated log order scores of a node and there are as many rows as inn mOrder
 getEdgeProbabilities <- function(mOrders, maxParents, functLogLocalStructureScore, mLogLocalOrderScores=NULL) {
   if (!is.matrix(mOrders)) {
     mOrders <- matrix(mOrders, nrow=1)
@@ -87,8 +91,7 @@ getExactEdgeProbabilities <- function(numNodes, maxParents, functLogLocalStructu
   logNormalizer <- getLogSumOfExponentials(allLogOrderScores)
   allOrderProbs <- exp(allLogOrderScores - logNormalizer)
   
-  # Since we're not sampling from posterior, we must do 
-  # P(e | D) = sum(P(e | D, <)P(< | D), <) 
+  # Marginalize P(e | D) = sum P(e | D, <)P(< | D) over < 
   mExactEdgeProb <- matrix(0, numNodes, numNodes)
   for (s in 1:nrow(allOrders)) { 
     mExactEdgeProb <- mExactEdgeProb + allOrderProbs[s] * getEdgeProbabilities(allOrders[s,], maxParents, functLogLocalStructureScore, allLogLocalOrderScores[s,]) 
