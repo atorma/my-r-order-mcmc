@@ -1,18 +1,3 @@
-
-# Returns a list where list$data are counts of observed variable configurations 
-# indexed using getIndexFromConfig() and list$getCount(vars, config) is a function that counts
-# the number of times a given state of given variables was observed
-countObservations <- function(mObs, cardinalities) {
-  counts <- rep(0, prod(cardinalities))
-  for (s in 1:nrow(mObs)) {
-    index <- getIndexFromConfig(mObs[s,], cardinalities)
-    counts[index] <- counts[index] + 1
-  }
-  
-  return(list(counts=counts))
-}
-
-
 # Counts the number of times each state in a given observation matrix
 # has been observed. 
 #
@@ -72,8 +57,22 @@ countSufficientStats <- function(node, vParents, cardinalities, mObsCounts) {
 # allows improving the efficiency of computing the sufficent stats
 # later.
 createSufficientStatsHelper <- function(cardinalities, mObs) {
-  mObsCounts <- countStates(mObs)
+  # Updated to user R's cross-tabulation (table function)
+  # after discovering it. This is about 32% faster than the old 
+  # version that used countStates and countSufficientStats.
+  
   return(function(node, parents) {
-    countSufficientStats(node, parents, cardinalities, mObsCounts)
+    factors <- list(1 + length(parents))
+    factors[[1]] <- factor(mObs[,node], levels=1:cardinalities[node])
+    
+    f <- 2
+    for (parent in parents) {
+      factors[[f]] <- factor(mObs[,parent], levels=1:cardinalities[parent])
+      f <- f + 1
+    }
+    
+    xtab <- table(factors)
+    suffStats <- matrix(xtab, nrow=prod(cardinalities[parents]), ncol=cardinalities[node], byrow=TRUE)
+    return(suffStats)
   })
 }
