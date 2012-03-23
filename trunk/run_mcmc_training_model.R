@@ -1,9 +1,13 @@
+# Data and parameters for MCMC
+mObs <- as.matrix(training_data)
+varNames <- names(training_data)
+numNodes <- length(varNames)
+cardinalities <- rep(3, numNodes)
+maxParents <- 3
+
 # Function for log(score(Xi, Pa(Xi) | D, <))
 functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
-
-# Score of best order
-logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderScore))
 
 # order-MCMC
 numSamples <- 25000
@@ -14,10 +18,4 @@ plot(rowSums(result$logScores), type="l")
 sampleIdx <- seq(from=5000, to=numSamples, by=200)
 samples <- result$samples[sampleIdx,]
 sampleLogScores <- result$logScores[sampleIdx,]
-mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores) 
-
-# Plot ROC curve
-roc <- getRocCurve(mEdgeProb, mAdj)
-xy <- matrix(c(0,1,0,1), 2, 2)
-plot(roc, type="l", xlim=c(0,1), ylim=c(0,1), col="blue")
-lines(xy, col="red")
+mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores)
