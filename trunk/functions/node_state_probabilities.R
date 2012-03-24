@@ -11,6 +11,8 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
   return(function(node, nodeState, parents=integer(0), parentStates=integer(0)) {
     #cat("Requested node", node, "state", nodeState, "parents", parents, "configuration", parentStates, fill=T)
     
+    if (length(parents) != length(parentStates)) stop("Inconsistent length of parent and parent state vectors")
+    
     # assumption: parent states i.e. rows of matrix are in order obtained 
     # by varying states the quicker the smaller the number of the node
     suffStats <- getSuffStats(node, parents)

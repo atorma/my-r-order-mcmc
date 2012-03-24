@@ -35,8 +35,24 @@ test_that("State probability when node has 2 parents", {
                equals( (1 + 1/(3*2*2))/(1 + 3*1/(3*2*2)) ) )
 })
 
-
 test_that("State probability not sensitive to parent ordering", {
   expect_that( getStateProb(node=3, nodeState=1, parents=c(2,1), parentStates=c(2,1)), 
                equals( (0 + 1/(3*2*2))/(2 + 3*1/(3*2*2)) ) ) 
+})
+
+
+test_that("Error if node number outside range defined by length of cardinality vector", {
+  expect_that( getStateProb(node=100, nodeState=1), throws_error() ) 
+})
+test_that("Error if node state outside node's cardinality", {
+  expect_that( getStateProb(node=1, nodeState=100), throws_error() ) 
+})
+test_that("Error if parent vector given but not parent states", {
+  expect_that( getStateProb(node=3, nodeState=1, parents=c(1,2)), throws_error() ) 
+})
+test_that("Error if parent state vector given but not parent vector", {
+  expect_that( getStateProb(node=3, nodeState=1, parentStates=c(1,2)), throws_error() ) 
+})
+test_that("Error if a parent state outside its cardinality", {
+  expect_that( getStateProb(node=3, nodeState=1, parents=c(1,2), parentStates=c(100,2)), throws_error() ) 
 })
