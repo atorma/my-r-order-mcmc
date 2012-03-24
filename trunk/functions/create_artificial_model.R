@@ -99,6 +99,9 @@ generateMultinomialParamsUsingWeightParam <- function(mAdj, cardinalities, diric
 
 # Generates random samples from the given model,
 # assuming nodes are indexed in a topological order
+#
+# TODO allow varying node state cardinality. 
+# It's now fixed to number of columns in arrTheta (max cardinality).
 generateSamplesFromModel <- function(mAdj, arrTheta, size) {
   cStates <- dim(arrTheta)[2]
   cNodes <- nrow(mAdj)
@@ -120,4 +123,30 @@ generateSamplesFromModel <- function(mAdj, arrTheta, size) {
 }
 
 
-
+# Computes the probabilities of generated observation vectors,
+# assuming nodes are indexed in a topological order.
+#
+# TODO allow varying node state cardinality. 
+# It's now fixed to number of columns in arrTheta (max cardinality).
+computeObsProbs <- function(mAdj, arrTheta, mObs) {
+  cardinality <- dim(arrTheta)[2]
+  
+  getObsProb <- function(vStates) {
+    probs <- numeric(length(vStates))
+    for (node in 1:nrow(mAdj)) {
+      nodeState <- vStates[node]
+      parents <- getParents(node, mAdj)
+      parentStates <- vStates[parents]
+      
+      counts <- integer(cardinality)
+      counts[nodeState] <- 1
+      parentConfigIndex <- getIndexFromConfig(parentStates, cardinality)
+      thetas <- arrTheta[parentConfigIndex, ,node]
+      probs[node] <- dmultinom(counts, size=1, prob=thetas)
+    }
+    return(prod(probs))
+  }
+  
+  return( apply(mObs, 1, getObsProb) )
+  
+}
