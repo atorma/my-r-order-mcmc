@@ -182,7 +182,9 @@ createCachedLogLocalStructureScoringFunction <- function(cardinalities, mObs, ma
 
 # Factory that returns a function f(node, order)
 # for computing log local order scores. 
-# Uses the given function g(node, parents) for computing log local structure scores.
+#
+# maxParents: the maximum number of parents any node can have
+# functLogLocalStructureScore: function f(node, parents, order) that returns the natural logarithm of score(X, Pa(X) | D, <)
 createCustomLogLocalOrderScoringFunction <- function(maxParents, functLogLocalStructureScore) {
   
   logLogLocalOrderScore <- function(node, vOrder) {

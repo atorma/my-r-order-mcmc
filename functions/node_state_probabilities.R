@@ -30,3 +30,36 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
     return(thetaExpected)
   })
 }
+
+# Computes the probability of a state of the network given a node ordering.
+#
+# vStates: vStates[i] is the state of node i
+# vOrder: vOrder[p] is the node at position p of the order
+# maxParents: maximum number of parents any node can have
+# functStateProbability: function f(node, nodeState, parents, parentState) that returns the probability of a node state given a parent configuration
+# functLogLocalStructureScore: function f(node, parents, order) that returns the natural logarithm of score(X, Pa(X) | D, <)
+getStateVectorProbability <- function(vStates, vOrder, maxParents, functStateProbability, functLogLocalStructureScore) {
+  # denominator in log scale
+  functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
+  logLocalOrderScores <- getLogLocalOrderScores(vOrder, functLogLocalOrderScore)
+  
+  # log Pr(node | D, <) for given node 
+  getLogNodeStateScore <- function(node) {
+    # numerator
+    parentSets <- getParentSets(node, vOrder, 0:maxParents)
+    familyScores <- numeric(length(parentSets))
+    for (j in 1:length(parentSets)) {
+      parents <- parentSets[[j]]
+      familyScores[j] <- log(functStateProbability(node, vStates[node], parents, vStates[parents])) + functLogLocalStructureScore(node, parents, vOrder)
+    }
+    logStateScore <- getLogSumOfExponentials(familyScores)
+    
+    return(logStateScore - logLocalOrderScores[node])
+  }
+  
+  logStateScores <- numeric(length(vStates))
+  for (node in 1:length(vStates)) {
+    logStateScores[node] <- getLogNodeStateScore(node)
+  }
+  return(exp(sum(logStateScores)))
+}
