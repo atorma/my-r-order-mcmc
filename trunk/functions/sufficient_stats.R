@@ -48,20 +48,28 @@ countSufficientStats <- function(node, vParents, cardinalities, mObsCounts) {
 }
 
 
-# Returns a function f initialized with given observations and 
-# cardinalities such that f(node, parents) returns the 
+# Returns a function f(node, parents) such that f returns the 
 # sufficient statistics matrix for the given node with the given
 # parents.
 #
 # Makes client code needing sufficient statistics cleaner and 
-# allows improving the efficiency of computing the sufficent stats
+# allows improving the performance of computing the sufficent stats
 # later.
 createSufficientStatsHelper <- function(cardinalities, mObs) {
   # Updated to user R's cross-tabulation (table function)
-  # after discovering it. This is about 32% faster than the old 
-  # version that used countStates and countSufficientStats.
+  # after discovering it. This makes it about 32 % faster than the old 
+  # version that used countStates and countSufficientStats when
+  # computing stats from scratch. Another improvement is caching
+  # which makes it very fast when the same (node, parents) combination
+  # is requested again. This is expected when computing sufficient
+  # stats over posterior order samples.
   
-  return(function(node, parents) {
+  cache <- hash()
+  getKey <- function(node, parents) {
+    return( paste(c(parents, node), collapse=' ') )
+  }
+  
+  computeSuffStats <- function(node, parents) {
     factors <- list(1 + length(parents))
     factors[[1]] <- factor(mObs[,node], levels=1:cardinalities[node])
     
@@ -73,6 +81,31 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
     
     xtab <- table(factors)
     suffStats <- matrix(xtab, nrow=prod(cardinalities[parents]), ncol=cardinalities[node], byrow=TRUE)
+    
     return(suffStats)
+  }
+  
+  return(function(node, parents) {    
+
+    parents <- sort(parents) # for consistency and cache keys.
+    
+    key <- getKey(node, parents)
+    suffStats <- cache[[key]]
+    if (is.null(suffStats)) {
+      suffStats <- computeSuffStats(node, parents)
+      cache[[key]] <- suffStats
+    }
+    return(suffStats)
+    
+  })
+}
+
+
+# Old version of createSufficientStatsHelper. For performance 
+# comparison only. To be removed.
+createSufficientStatsHelperOld <- function(cardinalities, mObs) {
+  mObsCounts <- countStates(mObs)
+  return(function(node, parents) {
+    countSufficientStats(node, parents, cardinalities, mObsCounts)
   })
 }
