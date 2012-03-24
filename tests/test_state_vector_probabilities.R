@@ -58,9 +58,15 @@ stateProbsTimesScores <- c(1/2*exp(-1) + 1/3*exp(-2) + 1/4*exp(-3) + 1/5*exp(-4)
                            1/2*exp(-1))   
 # Expected P(x | D, <)
 expectedProb <- prod(stateProbsTimesScores)/prod(orderScores)
+
 # Computed P(x | D, <)
 computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockLogLocalStructureScore)
-
 test_that("Posterior probability of state vector computed as expected", {
+  expect_that(computedProb, equals(expectedProb))
+})
+
+# Computed P(x | D, <)
+computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockLogLocalStructureScore, log(orderScores))
+test_that("Posterior probability of state vector computed as expected when order scores given", {
   expect_that(computedProb, equals(expectedProb))
 })

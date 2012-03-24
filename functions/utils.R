@@ -51,3 +51,16 @@ getRocCurve <- function(mPredictedEdgeProbs, mActualAdjacencies) {
   }
   return(roc)
 }
+
+# Computes Kullback-Leibler divergence criterion.
+#
+# p: true probabilities
+# q: approximated probabilities
+getKLDivergence <- function(p, q) {
+  if (length(p) != length(q)) stop("p and q must have same length")
+  
+  p <- p/sum(p)
+  q <- q/sum(q)
+  
+  sum(p*log(p/q))
+}
