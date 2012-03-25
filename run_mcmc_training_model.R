@@ -39,17 +39,12 @@ edgeRanking <- data.frame(source=sourceNames, target=targetNames, probability=ed
 edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing=TRUE), ]
 
 
-# compute the predicted test vector probabilities using the high-scoring order
-samples.logOrderScores <- rowSums(samples.logLocalOrderScores)
-orderRanking <- order(samples.logOrderScores, decreasing=TRUE)
-bestOrder <- samples[orderRanking[1], ]
-bestOrderLogLocalOrderScores <- samples.logLocalOrderScores[orderRanking[1],]
-
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mTestObs)
+# compute the predicted test vector probabilities using all the samples
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs)
 system.time({
   vEstTestObsProbs <- numeric(nrow(mTestObs))
   for (o in 1:nrow(mTestObs)) {
-    vEstTestObsProbs[o] <- getStateVectorProbability(mTestObs[o,], bestOrder, maxParents, functNodeStateProb, functLogLocalStructureScore, bestOrderLogLocalOrderScores)
+    vEstTestObsProbs[o] <- getStateVectorProbability(mTestObs[o,], samples, maxParents, functNodeStateProb, functLogLocalStructureScore, samples.logLocalOrderScores)
   }
 })
 # normalize vEstTestObsProbs
