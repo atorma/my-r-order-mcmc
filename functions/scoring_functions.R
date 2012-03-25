@@ -111,7 +111,7 @@ getLogLocalStructureScore <- function(node, vParents, vOrder, functLogLocalStruc
 # 
 getLogLocalOrderScore <- function(node, vOrder, maxParents, functLogLocalStructureScore) {
   families <- getParentSets(node, vOrder, 0:maxParents)
-  familyScores <- vector() # TODO do not grow vector
+  familyScores <- numeric(length(families)) 
   for (f in 1:length(families)) {
     familyScores[f] <- functLogLocalStructureScore(node, families[[f]], vOrder)
   }
@@ -122,7 +122,7 @@ getLogLocalOrderScore <- function(node, vOrder, maxParents, functLogLocalStructu
 
 # Computes all terms in log(P(D | <)) as a vector using the given scoring function
 getLogLocalOrderScores <- function(vOrder, functLogLocalOrderScore) {
-  logScores <- vector() # TODO do not grow vector
+  logScores <- numeric(length(vOrder)) 
   for (node in 1:length(vOrder)) {
     logScores[node] <- functLogLocalOrderScore(node, vOrder)
   }
@@ -170,11 +170,11 @@ createCachedLogLocalStructureScoringFunction <- function(cardinalities, mObs, ma
   logLocalDataLikelihood <- function(node, vParents) {
     getLogLocalDataLikelihood(node, vParents, paramsAndData)
   }
-  cache <- createFamilyScoreCache(logLocalDataLikelihood, paramsAndData$numberOfVariables, maxParents)
+  logLocalDataLikelihoodCached <- createFamilyScoreCache(logLocalDataLikelihood, paramsAndData$numberOfVariables, maxParents)
   
   
   logLocalStructureScore <- function(node, vParents, vOrder) {
-    getLogLocalStructureScore(node, vParents, vOrder, logLocalStructurePrior, cache)
+    getLogLocalStructureScore(node, vParents, vOrder, logLocalStructurePrior, logLocalDataLikelihoodCached)
   }
   
   return(logLocalStructureScore)

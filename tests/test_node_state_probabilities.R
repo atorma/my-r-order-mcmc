@@ -10,7 +10,7 @@ mObs[4,] <- c(1, 1, 2)
 # note that state 3 of node 3 never observed
 
 # function under test f(node, nodeState, parents, parentStates)
-# should return "E[theta | alpha, D] = (N_ijk + alpha_ijk)/(N_ij + alpha_ij)",
+# should return "E[theta_ijk | alpha_ij, D] = (N_ijk + alpha_ijk)/(N_ij + alpha_ij)",
 # alpha_ijk = equivSampleSize/(r_i*q_i)
 getStateProb <- createStateProbabilityFunction(cardinalities, mObs, equivalentSampleSize=1)
 
@@ -55,4 +55,31 @@ test_that("Error if parent state vector given but not parent vector", {
 })
 test_that("Error if a parent state outside its cardinality", {
   expect_that( getStateProb(node=3, nodeState=1, parents=c(1,2), parentStates=c(100,2)), throws_error() ) 
+})
+
+
+
+# Like above, but now the output is matrix with parameters for all states and parent configurations
+# Parent configuration index is obtained by sorting parents in node order and varying parent states the quicker
+# the higher the parent is on the sorted list (like function getIndexFromConfig() does). 
+
+thetas.node3.noparents    <- matrix(c((1 + 1/3)/(4 + 3/3), (3 + 1/3)/(4 + 3/3), (0 + 1/3)/(4 + 3/3)), 
+                                    nrow=1, ncol=3, byrow=TRUE)
+
+thetas.node3.parent1      <- matrix(c((0 + 1/6)/(3 + 3/6), (3 + 1/6)/(3 + 3/6), (0 + 1/6)/(3 + 3/6), 
+                                      (1 + 1/6)/(1 + 3/6), (0 + 1/6)/(1 + 3/6), (0 + 1/6)/(1 + 3/6)), 
+                                    nrow=2, ncol=3, byrow=TRUE)
+
+thetas.node3.parents1And2 <- matrix(c((0 + 1/12)/(1 + 3/12), (1 + 1/12)/(1 + 3/12), (0 + 1/12)/(1 + 3/12),  #(1, 1)
+                                      (1 + 1/12)/(1 + 3/12), (0 + 1/12)/(1 + 3/12), (0 + 1/12)/(1 + 3/12),  #(2, 1)
+                                      (0 + 1/12)/(2 + 3/12), (2 + 1/12)/(2 + 3/12), (0 + 1/12)/(2 + 3/12),  #(1, 2)
+                                      (0 + 1/12)/(0 + 3/12), (0 + 1/12)/(0 + 3/12), (0 + 1/12)/(0 + 3/12)), #(2, 2)
+                                    nrow=4, ncol=3, byrow=TRUE)
+
+getStateProbMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, equivalentSampleSize=1)
+
+test_that("Parameter table for each state and parent configuration computed", {
+  expect_that(getStateProbMatrix(node=3),                  equals(thetas.node3.noparents))
+  expect_that(getStateProbMatrix(node=3, parents=1),       equals(thetas.node3.parent1))
+  expect_that(getStateProbMatrix(node=3, parents=c(1, 2)), equals(thetas.node3.parents1And2))
 })
