@@ -85,9 +85,11 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
     return(suffStats)
   }
   
-  return(function(node, parents) {    
+  return(function(node, parents, parentsSorted=FALSE) {    
 
-    parents <- sort(parents) # for consistency and cache keys.
+    if (!parentsSorted) {
+      parents <- sort(parents) # for consistency and cache keys.
+    }
     
     key <- getKey(node, parents)
     suffStats <- cache[[key]]

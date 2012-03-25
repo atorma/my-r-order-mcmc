@@ -27,7 +27,7 @@ mockLogLocalStructureScore <- function(node, vParents, vOrder) {
   stop("Invalid node or parent set")
 }
 
-mockStateProbability <- function(node, nodeState, vParents, vParentStates) {
+mockStateProbability <- function(node, nodeState, vParents, vParentStates, parentsSorted) {
   #cat("Node", node, "state", nodeState, "parents", vParents, "config", vParentStates, fill=T)
   
   if (node == 1 && nodeState == 3) {
