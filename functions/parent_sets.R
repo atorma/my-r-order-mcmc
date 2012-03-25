@@ -8,20 +8,27 @@ getParentSets <- function(node, vOrder, size) {
   if (length(nodePos) != 1) stop("Node not found in order")
   if (min(size) < 0) stop("Negative set size")
   
-  # TODO don't grow!
-  parentSets <- list() 
+  
+  size <- size[size < nodePos] # can't select more parents than ahead of our node in order
+  
+  numSets <- (min(size) == 0)*1 + sum(choose(nodePos-1, size[size > 0]))
+  parentSets <- vector("list", numSets)
+  
+  
+  setIndex <- 1
   
   if (min(size) == 0) { 
     parentSets[1] <- list(integer(0)) # combinations function can't handle "n choose 0"
     size <- size[size > 0]
+    setIndex <- setIndex + 1
   }
-  size <- size[size < nodePos] # can't select more parents than ahead of our node in order
   
   possibleParents <- vOrder[1:(nodePos-1)]
   for (s in size) { # now 0 < s < pos
     sets <- combinations(length(possibleParents), s, possibleParents)
     for (i in 1:nrow(sets)) {
-      parentSets <- c(parentSets, list(sets[i,]))
+      parentSets[[setIndex]] <- sets[i,]
+      setIndex <- setIndex + 1
     }
   }
   
