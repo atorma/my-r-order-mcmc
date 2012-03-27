@@ -1,4 +1,5 @@
 # Returns a list of all parent sets of a node consistent with an order and sizes. 
+#
 # Parent sets are sorted ascending by node number.
 #
 # TODO an iterator object that does not hold all parent combinations in memory
@@ -35,50 +36,10 @@ getParentSets <- function(node, vOrder, size) {
   return(parentSets)
 }
 
-createCachedParentSetsProvider <- function(numNodes, maxParents) {
-  combsCache <- hash()
-  
-  getKey <- function(nPossibleParents, nActualParents) {
-    paste(c(nPossibleParents, nActualParents), collapse=' ')
-  }
-  
-  if (maxParents > 0) {
-    for (nPossibleParents in 1:(numNodes-1)) {
-      for (nActualParents in 1:min(nPossibleParents, maxParents)) {
-        key <- getKey(nPossibleParents, nActualParents)
-        combsCache[[key]] <- combinations(nPossibleParents, nActualParents, 1:nPossibleParents)
-      }
-    }
-  }
-  
-  cacheAccessor <- function(node, vOrder, size) {
-    nodePos <- which(node == vOrder)
-    if (length(nodePos) != 1) stop("Node not found in order")
-    if (min(size) < 0) stop("Negative set size")
-    
-    parentSets <- list()
-    if (min(size) == 0) { 
-      parentSets[1] <- list(integer(0)) # we didn't cache this
-      size <- size[size > 0]
-    }
-    size <- size[size < nodePos] # can't select more parents than ahead of our node in order
-    
-    possibleParents <- vOrder[1:(nodePos-1)]
-    for (s in size) { # now 0 < s < pos
-      key <- getKey(length(possibleParents), s)
-      positionsOfParents <- combsCache[[key]]
-      for (i in 1:nrow(positionsOfParents)) {
-        parentSets <- c(parentSets, list(vOrder[positionsOfParents[i,]]))
-      }
-    }
-    
-    return(parentSets)
-  }
-  return(cacheAccessor)
-}
 
 # Returns a list of all parent sets of a node consistent with an order and sizes and 
 # including given parents.
+#
 # Parent sets are sorted ascending by node number.
 getParentSetsIncludingParent <- function(node, vOrder, size, parents) {
   if (max(size) < length(parents)) {

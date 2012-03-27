@@ -147,10 +147,6 @@ runOrderMCMC <- function(numNodes, maxParents, functLogLocalStructureScore, maxS
     mcmcLogScores <<- rbind(mcmcLogScores, logOrderScores)
   }
   
-  # This makes MCM about 13% faster than without caching
-  # This seems to cause problems!
-  # getParentSets <- createCachedParentSetsProvider(numNodes, maxParents)
-  
   # Initialize
   vOrder <- permute(1:numNodes) # start with a random permutation
   functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
