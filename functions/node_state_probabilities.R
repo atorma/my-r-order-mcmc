@@ -36,8 +36,10 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
       parents <- sort(parents)
     }
     
+    #testing!
     key <- getKey(node, parents)
     thetasExpected <- cache[[key]]
+    #thetasExpected <- NULL
     
     if (is.null(thetasExpected)) {
       # assumption: getSuffStats() returns parent states 
@@ -157,6 +159,18 @@ getStateVectorProbability <- function(vStates, mOrders, maxParents, functNodeSta
   if (is.null(mlogLocalOrderScores)) {
     functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
   }
+  
+  # TODO
+  # In log scale, P(X | D, <) is computed as sum of node specific terms. 
+  # If we rearrange state vector X in the same order as nodes, we can
+  # reuse earlier computations. 
+  # 1. If the order is e.g. (1, 2, 3, *, *), the state is e.g.
+  #    (1, 3, 1, *, *), we're computing the term of node 3, and node 3 has 
+  #    parents (1, 2), we can reuse the term for family=((1, 2), 3), 
+  #    state=((1, 3), 1) regardless of what the full state vector or full order is.
+  # 2. If the term to compute is the same as above and we have already computed
+  #    family=((1), 3), state=((1), 1), we only need to compute ..?
+  
   
   # Pr(X | D, <) for given order index
   getProbability <- function(orderIndex) {

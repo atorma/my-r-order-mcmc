@@ -69,6 +69,8 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
     return( paste(c(parents, node), collapse=' ') )
   }
   
+  # TODO could this be even more efficient if mObs is a data.frame
+  # and we use tapply() or aggregate() or aggregate.data.frame() method?
   computeSuffStats <- function(node, parents) {
     factors <- list(1 + length(parents))
     factors[[1]] <- factor(mObs[,node], levels=1:cardinalities[node])
@@ -93,6 +95,7 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
     
     key <- getKey(node, parents)
     suffStats <- cache[[key]]
+    
     if (is.null(suffStats)) {
       suffStats <- computeSuffStats(node, parents)
       cache[[key]] <- suffStats
