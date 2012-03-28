@@ -1,9 +1,9 @@
-numNodes <- 10
+numNodes <- 8
 cardinalities <- rep(3, numNodes)
 maxParents <- 3
 mAdj <- generateRandomDag(numNodes, maxParents)
 arrThetas <- generateMultinomialParams(mAdj, cardinalities)
-mObs <- generateSamplesFromModel(mAdj, arrThetas, 500)
+mObs <- generateSamplesFromModel(mAdj, arrThetas, 300)
 
 mUniqueObs <- unique.data.frame(mObs)
 mUniqueObs <- as.matrix(mUniqueObs)

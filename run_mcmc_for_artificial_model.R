@@ -26,9 +26,6 @@ lines(xy, col="red")
 
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs)
 system.time({
-vEstimatedObsProbs <- numeric(nrow(mUniqueObs))
-for (o in 1:nrow(mUniqueObs)) {
-  vEstimatedObsProbs[o] <- getStateVectorProbability(mUniqueObs[o,], samples, maxParents, functNodeStateProb, functLogLocalStructureScore, sampleLogScores)
-}
+  vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, maxParents, functNodeStateProb, functLogLocalStructureScore, sampleLogScores)
 })
 getKLDivergence(vObsProbs, vEstimatedObsProbs)
