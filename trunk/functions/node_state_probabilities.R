@@ -36,10 +36,8 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
       parents <- sort(parents)
     }
     
-    #testing!
     key <- getKey(node, parents)
     thetasExpected <- cache[[key]]
-    #thetasExpected <- NULL
     
     if (is.null(thetasExpected)) {
       # assumption: getSuffStats() returns parent states 
