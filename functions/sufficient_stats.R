@@ -69,15 +69,20 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
     return( paste(c(parents, node), collapse=' ') )
   }
   
+  allFactors <- list(ncol(mObs))
+  for (node in 1:ncol(mObs)) {
+    allFactors[[node]] <- factor(mObs[,node], levels=1:cardinalities[node])
+  }
+  
   # TODO could this be even more efficient if mObs is a data.frame
   # and we use tapply() or aggregate() or aggregate.data.frame() method?
   computeSuffStats <- function(node, parents) {
     factors <- list(1 + length(parents))
-    factors[[1]] <- factor(mObs[,node], levels=1:cardinalities[node])
+    factors[[1]] <- allFactors[[node]]
     
     f <- 2
     for (parent in parents) {
-      factors[[f]] <- factor(mObs[,parent], levels=1:cardinalities[parent])
+      factors[[f]] <- allFactors[[parent]]
       f <- f + 1
     }
     
