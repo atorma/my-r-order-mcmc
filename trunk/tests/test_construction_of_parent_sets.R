@@ -24,13 +24,6 @@ test_that("Error cases", {
   expect_that(getParentSets(node=4, vOrder, size=-1), throws_error()) 
 })
 
-# Using cache
-getParentSetsCached <- createCachedParentSetsProvider(length(vOrder), maxParents=3);
-test_that("Parents sets of given sizes", {
-  expect_that(getParentSetsCached(node=4, vOrder, size=2), equals(expected[5:7]))
-  expect_that(getParentSetsCached(node=4, vOrder, size=0:3), equals(expected))
-  expect_that(getParentSetsCached(node=4, vOrder, size=0:100), equals(expected)) # max parents for node 4 in order is 3
-})
 
 
 expected <- list(

@@ -134,17 +134,20 @@ createStateProbabilityFunctionOld <- function(cardinalities, mObs, equivalentSam
 
 
 
-# Computes the probability of a state of the network given a node ordering.
-# If multple orders are inputed, then the result is the mean probability of 
+# Computes the probabilities of state vectors given node orderings.
+# If multiple orders are inputed, then the result is the mean probability of 
 # the state over the orders.
 #
-# vStates: vStates[i] is the state of node i
+# mStates: vStates[s, i] is the state of node i in state vector s
 # mOrders: mOrders[o, p] is the node at position p of the o:th order
 # maxParents: maximum number of parents any node can have
 # functNodeStateProbability: function f(node, nodeState, parents, parentState) that returns the probability of a node state given a parent configuration
 # functLogLocalStructureScore: function f(node, parents, order) that returns the natural logarithm of score(X, Pa(X) | D, <)
 # mlogLocalOrderScores (optional): mlogLocalOrderScores[o, node] is the log score contribution of node to the o:th order score
-getStateVectorProbability <- function(vStates, mOrders, maxParents, functNodeStateProbability, functLogLocalStructureScore, mlogLocalOrderScores=NULL) {
+getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functLogLocalStructureScore, mlogLocalOrderScores=NULL) {
+  if (!is.matrix(mStates)) {
+    mStates <- matrix(mStates, nrow=1)
+  }
   if (!is.matrix(mOrders)) {
     mOrders <- matrix(mOrders, nrow=1)
   }
@@ -153,56 +156,96 @@ getStateVectorProbability <- function(vStates, mOrders, maxParents, functNodeSta
   }
   
   if (length(mOrders) == 0) return(NA)
+  
   if (length(mlogLocalOrderScores) > 0 && (nrow(mOrders) != nrow(mlogLocalOrderScores))) stop("Number of orders inconsistent with number of order score vectors")
+  if (ncol(mStates) != ncol(mOrders)) stop("state vectors must have as many elements as order vectors") 
   
   
   if (is.null(mlogLocalOrderScores)) {
     functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
   }
   
-  # TODO
   # In log scale, P(X | D, <) is computed as sum of node specific terms. 
+  # Each term requires summing over all possible parent sets of the node,
+  # which is expensive. 
   # If we rearrange state vector X in the same order as nodes, we can
-  # reuse earlier computations. 
-  # 1. If the order is e.g. (1, 2, 3, *, *), the state is e.g.
-  #    (1, 3, 1, *, *), we're computing the term of node 3, and node 3 has 
-  #    parents (1, 2), we can reuse the term for family=((1, 2), 3), 
-  #    state=((1, 3), 1) regardless of what the full state vector or full order is.
-  # 2. If the term to compute is the same as above and we have already computed
-  #    family=((1), 3), state=((1), 1), we only need to compute ..?
+  # reuse earlier computations.
+  # If the order is e.g. (1, 2, 3, *, *), the state is e.g.
+  # (1, 3, 1, *, *), and we're computing the term of node 3,
+  # we can use previously computed term of node 3 in its state 1 with 
+  # _possible_ parents {1, 2} in states {1, 3} regardless of what nodes
+  # and state come after node 3 in the order.
   
-  
-  # Pr(X | D, <) for given order index
-  getProbability <- function(orderIndex) {
-    vOrder <- mOrders[orderIndex,]
+  cache <- hash()
+
+  getCacheKey <- function(node, predecessorNodes, vStates) {
+    nodeState <- vStates[node]
+    predecessorNodes <- sort(predecessorNodes)
+    predecessorStates <- vStates[predecessorNodes]
     
-    # denominator in log scale
-    logLocalOrderScores <- mlogLocalOrderScores[orderIndex,]
-    if (is.null(logLocalOrderScores)) {
-      logLocalOrderScores <- getLogLocalOrderScores(vOrder, functLogLocalOrderScore)
-    }  
-  
-    # log Pr(node | D, <) for given node 
-    getLogNodeStateScore <- function(node) {
-      # numerator
-      parentSets <- getParentSets(node, vOrder, 0:maxParents) # parent sets sorted ascending
-      familyScores <- numeric(length(parentSets))
-      for (j in 1:length(parentSets)) {
-        parents <- parentSets[[j]]
-        familyScores[j] <- log(functNodeStateProbability(node, vStates[node], parents, vStates[parents], parentsSorted=TRUE)) + functLogLocalStructureScore(node, parents, vOrder)
-      }
-      logStateScore <- getLogSumOfExponentials(familyScores)
-      
-      return(logStateScore - logLocalOrderScores[node])
-    }
-    
-    logStateScores <- numeric(length(vStates))
-    for (node in 1:length(vStates)) {
-      logStateScores[node] <- getLogNodeStateScore(node)
-    }
-    return(exp(sum(logStateScores)))
+    return(paste(c("n:", node, "ns:", nodeState, "p:", predecessorNodes, "ps:", predecessorStates), collapse=" "))
   }
   
-  probabilities <- sapply(1:nrow(mOrders), getProbability)
-  return(mean(probabilities))
+  # log P(Xi | D, <) for given node in a given state vector.
+  # This is an expensive operation.
+  getLogNodeStateProbability <- function(node, vStates, orderIndex) {
+    vOrder <- mOrders[orderIndex,]
+    
+    # numerator in log scale
+    # an expensive operation
+    parentSets <- getParentSets(node, vOrder, 0:maxParents) # parent sets are sorted ascending
+    familyScores <- numeric(length(parentSets))
+    for (j in 1:length(parentSets)) {
+      parents <- parentSets[[j]]
+      familyScores[j] <- log(functNodeStateProbability(node, vStates[node], parents, vStates[parents], parentsSorted=TRUE)) + functLogLocalStructureScore(node, parents, vOrder)
+    }
+    logWeighedProbabilities <- getLogSumOfExponentials(familyScores)
+    
+    # denominators in log scale
+    logSumOfWeights <- mlogLocalOrderScores[orderIndex, node]
+    if (is.null(logSumOfWeights)) {
+      # an expensive operation
+      logSumOfWeights <- functLogLocalOrderScore(node, vOrder)
+    }
+    
+    return(logWeighedProbabilities - logSumOfWeights)
+  }
+  
+  
+  # P(X | D, <) for given order index an state vector
+  getProbabilityGivenOrder <- function(vStates, orderIndex) {
+    vOrder <- mOrders[orderIndex,]
+ 
+    logNodeStateProbabilities <- numeric(length(vStates))
+    for (i in 1:length(vOrder)) {
+      node <- vOrder[i]
+      
+      if (i == 1) {
+        predecessorNodes <- integer(0)
+      } else {
+        predecessorNodes <- vOrder[1:(i-1)]
+      }
+      cacheKey <- getCacheKey(node, predecessorNodes, vStates)
+      
+      logNodeStateProbability <- cache[[cacheKey]]
+      if (is.null(logNodeStateProbability)) {
+        logNodeStateProbability <- getLogNodeStateProbability(node, vStates, orderIndex)
+        cache[[cacheKey]] <- logNodeStateProbability
+      }
+      
+      logNodeStateProbabilities[node] <- logNodeStateProbability
+    }
+    
+    return(exp(sum(logNodeStateProbabilities)))
+  }
+  
+  # Mean P(X | D) over all the input orders 
+  getMeanProbabilityOverOrders <- function(vStates) {
+    probabilities <- sapply(1:nrow(mOrders), function(orderIndex) getProbabilityGivenOrder(vStates, orderIndex))
+    return(mean(probabilities))
+  }
+  
+  # Mean P(X | D) for all input states
+  probabilities <- apply(mStates, 1, getMeanProbabilityOverOrders)
+  return(probabilities)
 }
