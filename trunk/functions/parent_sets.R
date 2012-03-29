@@ -10,12 +10,11 @@ getParentSets <- function(node, vOrder, size) {
   if (min(size) < 0) stop("Negative set size")
   
   
+  possibleParents <- vOrder[1:(nodePos-1)]
   size <- size[size < nodePos] # can't select more parents than ahead of our node in order
   
   numSets <- (min(size) == 0)*1 + sum(choose(nodePos-1, size[size > 0]))
   parentSets <- vector("list", numSets)
-  
-  
   setIndex <- 1
   
   if (min(size) == 0) { 
@@ -24,7 +23,6 @@ getParentSets <- function(node, vOrder, size) {
     setIndex <- setIndex + 1
   }
   
-  possibleParents <- vOrder[1:(nodePos-1)]
   for (s in size) { # now 0 < s < pos
     sets <- combinations(length(possibleParents), s, possibleParents)
     for (i in 1:nrow(sets)) {

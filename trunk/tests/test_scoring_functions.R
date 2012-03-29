@@ -103,17 +103,9 @@ mObs[5,] <- c(2, 1, 3)
 logScoreOrder123 <- -14.7625887083262
 
 
-functLogLocalOrderScore <- createLogLocalOrderScoringFunction(cardinalities, mObs, maxParents=2)
-test_that("Order score computed as expected from scratch every time", {
-  expect_that(sum(getLogLocalOrderScores(vOrder=c(1,2,3), functLogLocalOrderScore)), equals(logScoreOrder123))
-})
-
-
 functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents=2)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents=2, functLogLocalStructureScore)
-test_that("Order score computed as expected where scoring function created using factory function", {
+test_that("Order score computed as expected when scoring function created using factory function", {
   expect_that(sum(getLogLocalOrderScores(vOrder=c(1,2,3), functLogLocalOrderScore)), equals(logScoreOrder123))
 })
-
-
 
