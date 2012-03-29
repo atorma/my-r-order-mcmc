@@ -206,9 +206,13 @@ getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeSta
       logSumOfWeights <- functLogLocalOrderScore(node, vOrder)
     }
     
+    #cat("Computed P(node=", node, "state=", vStates[node], "X=", vStates, "order=", vOrder, fill=T)
+    
     return(logWeighedProbabilities - logSumOfWeights)
   }
   
+  #For printing only
+  stateIndex <- 1
   
   # P(X | D, <) for given order index an state vector
   getProbabilityGivenOrder <- function(vStates, orderIndex) {
@@ -234,12 +238,16 @@ getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeSta
       logNodeStateProbabilities[node] <- logNodeStateProbability
     }
     
+    cat("Computed probability of state ", stateIndex, "given order ", orderIndex, fill=T)
+    
     return(exp(sum(logNodeStateProbabilities)))
   }
   
   # Mean P(X | D) over all the input orders 
   getMeanProbabilityOverOrders <- function(vStates) {
     probabilities <- sapply(1:nrow(mOrders), function(orderIndex) getProbabilityGivenOrder(vStates, orderIndex))
+    cat("Computed mean probability of state ", stateIndex, "over all orders", fill=T)
+    stateIndex <<- stateIndex + 1
     return(mean(probabilities))
   }
   

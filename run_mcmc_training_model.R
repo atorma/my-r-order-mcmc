@@ -42,10 +42,7 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 # compute the predicted test vector probabilities using all the samples
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs)
 system.time({
-  vEstTestObsProbs <- numeric(nrow(mTestObs))
-  for (o in 1:nrow(mTestObs)) {
-    vEstTestObsProbs[o] <- getStateVectorProbability(mTestObs[o,], samples, maxParents, functNodeStateProb, functLogLocalStructureScore, samples.logLocalOrderScores)
-  }
+    vEstTestObsProbs <- getStateVectorProbability(mTestObs, samples, maxParents, functNodeStateProb, functLogLocalStructureScore, samples.logLocalOrderScores)
 })
 # normalize vEstTestObsProbs
 vEstTestObsProbsNorm <- vEstTestObsProbs/sum(vEstTestObsProbs)
