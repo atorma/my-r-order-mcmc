@@ -8,7 +8,7 @@ wrapParamsAndData <- function(cardinalities, mObs, maxParents) {
     getAlphas = function(node, parents) {
       getBDEuParams(node, parents, cardinalities, equivalentSampleSize=1)
     },
-    countSuffStats = createSufficientStatsHelper(cardinalities, mObs),
+    countSuffStats = createSufficientStatsProvider(cardinalities, mObs),
     maxParents = maxParents,
     numberOfVariables = length(cardinalities)
     ))

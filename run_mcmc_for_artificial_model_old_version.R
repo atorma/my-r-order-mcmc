@@ -1,8 +1,5 @@
-# Function for sufficient stats
-functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
-
 # Function for log(score(Xi, Pa(Xi) | D, <))
-functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction2(cardinalities, maxParents, functSuffStats)
+functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
 
 # Score of best order
@@ -27,7 +24,7 @@ lines(xy, col="red")
 
 
 
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=NULL)
 system.time({
   vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, maxParents, functNodeStateProb, functLogLocalStructureScore, sampleLogScores)
 })

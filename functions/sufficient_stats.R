@@ -1,53 +1,3 @@
-# Counts the number of times each state in a given observation matrix
-# has been observed. 
-#
-# mObs: a matrix where each row is an observed state and columns are variables.
-# returns: a matrix where each row is an observed state, columns are variables except the last column
-# contains the count of the state
-countStates <- function(mObs) {
-  cVar <- ncol(mObs)
-  cObs <- nrow(mObs)
-  
-  counted <- matrix(NA, nrow=1, ncol=cVar+1)  
-  counted[1,] <- c(mObs[1,], 1)
-  for (o in 2:cObs) {
-    testMatrix <- matrix(mObs[o,], nrow=nrow(counted), ncol=cVar, byrow=T)
-    rowIndex <- which(apply(counted[,1:cVar] == testMatrix, 1, all))
-    if (length(rowIndex) == 0) { # new state
-      counted <- rbind(counted, c(mObs[o,], 1))
-    } else {
-      counted[rowIndex, cVar+1] <- counted[rowIndex, cVar+1] + 1
-    }
-  }
-  return(counted)
-}
-
-# Returns the sufficient statistics of a local multinomial distribution where
-# each row contains counts given a parent configuration and each column corresponds
-# to a state of their child node.
-#
-# mObsCounts: a matrix where each row is a state, the last column contains the number of times each
-# state has been observed, and other columns contain states of variables
-countSufficientStats <- function(node, vParents, cardinalities, mObsCounts) {
-  cVar <- ncol(mObsCounts)-1
-  if (length(cardinalities) == 1) {
-    cardinalities <- rep(cardinalities, cVar) 
-  }
-  
-  vParents <- sort(vParents) # nodes must be in ascending order
-  parentCards <- cardinalities[vParents]
-  cParentConfigs <- prod(parentCards)
-  mCounts <- matrix(0, cParentConfigs, cardinalities[node])
-  for (s in 1:nrow(mObsCounts)) {
-    parentConfig <- mObsCounts[s, vParents]
-    iParentConfig <- getIndexFromConfig(parentConfig, parentCards)
-    iNodeState <- mObsCounts[s, node]
-    mCounts[iParentConfig, iNodeState] <- mCounts[iParentConfig, iNodeState] + mObsCounts[s, cVar+1]
-  }
-  return(mCounts)
-}
-
-
 # Returns a function f(node, parents) such that f returns the 
 # sufficient statistics matrix for the given node with the given
 # parents.
@@ -55,7 +5,7 @@ countSufficientStats <- function(node, vParents, cardinalities, mObsCounts) {
 # Makes client code needing sufficient statistics cleaner and 
 # allows improving the performance of computing the sufficent stats
 # later.
-createSufficientStatsHelper <- function(cardinalities, mObs) {
+createSufficientStatsProvider <- function(cardinalities, mObs) {
   # Updated to user R's cross-tabulation (table function)
   # after discovering it. This makes it about 32 % faster than the old 
   # version that used countStates and countSufficientStats when
@@ -111,11 +61,60 @@ createSufficientStatsHelper <- function(cardinalities, mObs) {
 }
 
 
-# Old version of createSufficientStatsHelper. For performance 
-# comparison only. To be removed.
-createSufficientStatsHelperOld <- function(cardinalities, mObs) {
-  mObsCounts <- countStates(mObs)
-  return(function(node, parents) {
-    countSufficientStats(node, parents, cardinalities, mObsCounts)
+# Returns a function f(node, parents) such that f returns the 
+# posterior counts matrix for the given node with the given
+# parents according to BDeu prior.
+#
+# cardinalities: cardinalities[node] is the number of different values of node
+# mObs: mObs[obs, node] is the state of node in observation index obs
+#
+# TODO is this needed after all?
+createPosteriorCountsProvider <- function(cardinalities, mObs, equivalentSampleSize=1) {
+  
+  cache <- hash()
+  getKey <- function(node, parents) {
+    return( paste(c(parents, node), collapse=' ') )
+  }
+  
+  allFactors <- list(ncol(mObs))
+  for (node in 1:ncol(mObs)) {
+    allFactors[[node]] <- factor(mObs[,node], levels=1:cardinalities[node])
+  }
+  
+  # TODO could this be even more efficient if mObs is a data.frame
+  # and we use tapply() or aggregate() or aggregate.data.frame() method?
+  computePosteriorCounts <- function(node, parents) {
+    factors <- list(1 + length(parents))
+    factors[[1]] <- allFactors[[node]]
+    
+    f <- 2
+    for (parent in parents) {
+      factors[[f]] <- allFactors[[parent]]
+      f <- f + 1
+    }
+    
+    xtab <- table(factors)
+    suffStats <- matrix(xtab, nrow=prod(cardinalities[parents]), ncol=cardinalities[node], byrow=TRUE)
+    
+    priorCounts <- getAlphaBDEu(equivalentSampleSize, cardinalities[node], prod(cardinalities[parents])) # a scalar actually
+    
+    return(suffStats + priorCounts)
+  }
+  
+  return(function(node, parents, parentsSorted=FALSE) {    
+    
+    if (!parentsSorted) {
+      parents <- sort(parents) # for consistency and cache keys.
+    }
+    
+    key <- getKey(node, parents)
+    counts <- cache[[key]]
+    
+    if (is.null(counts)) {
+      counts <- computePosteriorCounts(node, parents)
+      cache[[key]] <- counts
+    }
+    return(counts)
+    
   })
 }
