@@ -46,3 +46,8 @@ test_that("Parent sets of given sizes containing given parent", {
 test_that("Parent sets containing given parent sorted ascending regardless order of possible parent nodes", {
   expect_that(getParentSetsIncludingParent(node=4, c(2, 1, 3, 4), size=0:3, parent=2), equals(expected)) 
 })
+
+
+test_that("Numbers of possible parent sets computed correctly", {
+  expect_that(getNumParentSets(26, 1:26, 0:3), equals(1 + choose(25, 1) + choose(25, 2) + choose(25, 3)))
+})

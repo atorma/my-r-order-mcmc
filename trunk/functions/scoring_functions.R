@@ -112,6 +112,77 @@ createFamilyScoreCache <- function(functScore, numberOfNodes, maxParents) {
 }
 
 
+# Precomputes family (node + parent set) specific scores for all families up to a maximum 
+# family size for each node using the given scoring function functScore(node, parents).
+#
+# Returns a list object with the following elements
+# getScore: 
+#   function f(node, parents) that returns the cached score for given family
+# mSortedScores: 
+#   mSortedScores[f, i] is the score of the f:th best family for node i
+# sortedFamilies: 
+#   list l1 such that l1[[i]] contains another list l2 where l2[[f]] is the f:th best parent set (vector) for node i
+#
+# Note that this doesn't scale up very well, but if the initial computation
+# investment and memory limits are ok, then it's fast to get a family score.
+computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
+  
+  nodes <- 1:numberOfNodes
+  familyToScoreMap <- hash()
+  mSortedScores <- matrix(NA, nrow=getNumParentSets(numberOfNodes, nodes, 0:maxParents), ncol=numberOfNodes)
+  sortedFamilies <- vector("list", numberOfNodes)
+  
+  # assumption: same parents always sorted in same order
+  getFamilyKey <- function(node, parents, parentsSorted) {
+    if (!parentsSorted) {
+      parents <- sort(parents)
+    }
+    familyKey <- paste(c(parents, node), collapse=' ')
+    return(familyKey)
+  }
+  
+  computeAndCacheScore <- function(node, parents) {
+    familyKey <- getFamilyKey(node, parents, parentsSorted=TRUE)
+    
+    if (!is.null(familyToScoreMap[[familyKey]])) {
+      stop(paste("Score for node", node, "parents", paste(parents, collapse=' '), "is being overwritten", collapse=' '))
+    }
+    
+    score <- functScore(node, parents)
+    familyToScoreMap[[familyKey]] <- score
+    return(score)
+  }
+  
+  
+  for (node in nodes) {
+    # Compute scores
+    orderWithOurNodeLast <- c(nodes[nodes != node], node)
+    parentSets <- getParentSets(node, orderWithOurNodeLast, 0:maxParents)
+    
+    for (p in 1:length(parentSets)) {
+      parents <- parentSets[[p]]
+      score <- computeAndCacheScore(node, parents)
+      mSortedScores[p, node] <- score
+    }
+    
+    # Sort scores and families
+    ordering <- sort.list(mSortedScores[,node], decreasing=TRUE, method="quick", na.last=NA)
+    mSortedScores[,node] <- mSortedScores[ordering, node]
+    sortedFamilies[[node]] <- parentSets[ordering]
+  }
+
+  cacheAccessor <- function(node, parents, parentsSorted=FALSE) {   
+    familyKey <- getFamilyKey(node, parents, parentsSorted)
+    score <- familyToScoreMap[[familyKey]]
+    if (is.null(score)) {
+      stop(paste("Score for node", node, "parents", paste(parents, collapse=' '), "not in cache", collapse=' '))
+    }
+    return(score)
+  }
+  
+  return(list(getScore=cacheAccessor, mSortedScores=mSortedScores, sortedFamilies=sortedFamilies))
+}
+
 
 
 # Factory that returns a function f(node, parents, order)
@@ -137,8 +208,14 @@ createCachedLogLocalStructureScoringFunction <- function(cardinalities, mObs, ma
   return(logLocalStructureScore)
 }
 
-# Factory that returns a function f(node, parents, order)
-# for computing log local data likelhood so that likelihoods
+# Factory that returns a list object with the following elements
+# functLogLocalStructureScore: 
+#   function f(node, parents, order) that computes the log score term of 
+#   node having given parents in a given order
+# mSortedScores: 
+#   mSortedScores[f, i] is the log structure score of the f:th best family for node i
+# sortedFamilies: 
+#   list l1 such that l1[[i]] contains another list l2 where l2[[f]] is the f:th best parent set for node i
 #
 # 1. Allows reuse of a sufficient statistics function (e.g. a cache)
 # 2. P(G | <) = P(G) = product of (numNodes-1 choose numParents)^(-1) regardless of order
