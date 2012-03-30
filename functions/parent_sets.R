@@ -1,3 +1,17 @@
+# Returns the number of possible parent sets of given node
+# consistent with given order. 
+# 
+# node: node index
+# vOrder: ordering of node indexes
+# size: vector defining allowed parent set sizes (e.g. 0:3)
+getNumParentSets <- function(node, vOrder, size) {
+  nodePos <- which(node == vOrder)
+  size <- size[size < nodePos] # can't select more parents than ahead of our node in order
+  numSets <- (min(size) == 0)*1 + sum(choose(nodePos-1, size[size > 0]))
+  return(numSets)
+}
+
+
 # Returns a list of all parent sets of a node consistent with an order and sizes. 
 #
 # Parent sets are sorted ascending by node number.

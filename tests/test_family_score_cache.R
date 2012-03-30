@@ -1,4 +1,4 @@
-context("Caching of local data likelihood scores for each family")
+context("Caching of scores for each node family")
 
 nodes <- 1:12
 logFamilyScore <- function(node, vParents) {
@@ -27,7 +27,10 @@ logFamilyScore <- function(node, vParents) {
   stop(paste("Illegal node or family", node, vParents))
 }
 
-cache <- createFamilyScoreCache(logFamilyScore, numberOfNodes=length(nodes), maxParents=2)
+resultList <- computeFamilyScores(logFamilyScore, numberOfNodes=length(nodes), maxParents=2)
+cache <- resultList$getScore
+mSortedScores <- resultList$mSortedScores
+sortedFamilies <- resultList$sortedFamilies
 
 test_that("Expected value retrieved from cache", {
   expect_that(cache(1, integer(0)), equals(0))
@@ -63,3 +66,17 @@ test_that("Error if family is not in cache", {
   expect_that(cache(3, c(1,2,4,5,6)), throws_error())
 })
 
+
+test_that("Family scores of node 1 sorted descending", {
+  expect_that(mSortedScores[1,1], equals(0))
+  expect_that(mSortedScores[2,1], equals(-1))
+  expect_that(mSortedScores[3,1], equals(-2))           
+  expect_that(mSortedScores[4,1], equals(-3))           
+})
+
+test_that("Families of node 1 sorted descending by score", {
+  expect_that(sortedFamilies[[1]][[1]], equals(integer(0)))
+  expect_that(sortedFamilies[[1]][[2]], equals(2))
+  expect_that(sortedFamilies[[1]][[3]], equals(3))           
+  expect_that(sortedFamilies[[1]][[4]], equals(c(2,3)))
+})
