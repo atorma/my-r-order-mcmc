@@ -1,9 +1,22 @@
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
-# Function for log(score(Xi, Pa(Xi) | D, <))
-functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction2(cardinalities, maxParents, functSuffStats)
-functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
+# Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
+
+# Cache all the local structure scores 
+scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents)
+
+# Replace the local structure scoring function with its cached version
+functLogLocalStructureScore <- function(node, parents, vOrder) {
+  scoreList$getFamilyScore(node, parents) 
+}
+
+# Local order score i.e term of node in log P(D | <)
+pruningDiff <- exp(7) # max difference between log(bestFamilyScore) - log(familyScore)
+functLogLocalOrderScore <- function(node, vOrder) {
+  getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
+}
 
 # Score of best order
 logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderScore))
