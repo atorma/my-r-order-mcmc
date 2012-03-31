@@ -116,8 +116,13 @@ createFamilyScoreCache <- function(functScore, numberOfNodes, maxParents) {
 # family size for each node using the given scoring function functScore(node, parents).
 #
 # Returns a list object with the following elements
-# getScore: 
-#   function f(node, parents) that returns the cached score for given family
+# getFamilyScore: 
+#   f(node, parents) that returns the cached score for the given family. 
+# getFamiliesAndScores:
+#   f(node, order[, diff]) that returns a list where list$scores contains cached family scores 
+#   of the node consistent with the order. The scores are sorted descending and the last 
+#   score is smallest score with (bestScore - score) <= diff. The default diff is Inf.
+#   list$parentSets contains the parent sets producing the scores. 
 # mSortedScores: 
 #   mSortedScores[f, i] is the score of the f:th best family for node i
 # sortedFamilies: 
@@ -132,7 +137,6 @@ computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
   mSortedScores <- matrix(NA, nrow=getNumParentSets(numberOfNodes, nodes, 0:maxParents), ncol=numberOfNodes)
   sortedFamilies <- vector("list", numberOfNodes)
   
-  # assumption: same parents always sorted in same order
   getFamilyKey <- function(node, parents, parentsSorted) {
     if (!parentsSorted) {
       parents <- sort(parents)
@@ -141,8 +145,8 @@ computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
     return(familyKey)
   }
   
-  computeAndCacheScore <- function(node, parents) {
-    familyKey <- getFamilyKey(node, parents, parentsSorted=TRUE)
+  computeAndCacheScore <- function(node, parents, parentsSorted) {
+    familyKey <- getFamilyKey(node, parents, parentsSorted)
     
     if (!is.null(familyToScoreMap[[familyKey]])) {
       stop(paste("Score for node", node, "parents", paste(parents, collapse=' '), "is being overwritten", collapse=' '))
@@ -161,7 +165,7 @@ computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
     
     for (p in 1:length(parentSets)) {
       parents <- parentSets[[p]]
-      score <- computeAndCacheScore(node, parents)
+      score <- computeAndCacheScore(node, parents, parentsSorted=TRUE)
       mSortedScores[p, node] <- score
     }
     
@@ -171,16 +175,56 @@ computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
     sortedFamilies[[node]] <- parentSets[ordering]
   }
 
-  cacheAccessor <- function(node, parents, parentsSorted=FALSE) {   
+  getFamilyScore <- function(node, parents, parentsSorted=FALSE) {   
     familyKey <- getFamilyKey(node, parents, parentsSorted)
     score <- familyToScoreMap[[familyKey]]
     if (is.null(score)) {
-      stop(paste("Score for node", node, "parents", paste(parents, collapse=' '), "not in cache", collapse=' '))
+      stop(paste("Score of node", node, "with parents", paste(parents, collapse=' '), "not in cache", collapse=' '))
     }
     return(score)
   }
   
-  return(list(getScore=cacheAccessor, mSortedScores=mSortedScores, sortedFamilies=sortedFamilies))
+  getFamiliesAndScores <- function(node, vOrder, pruningDiff=Inf) {
+    nodePos <- which(vOrder == node) 
+    if (!length(nodePos)) stop("Node not found in order or found more than once")
+    
+    possibleParents <- vOrder[0:(nodePos-1)] # may be empty vector
+    
+    allParentSetsSorted <- sortedFamilies[[node]]
+    allScoresSorted <- mSortedScores[,node]
+    
+    # Initialize output vectors. Better to reduce size later than to grow.
+    resultParentSets <- vector("list", length(allParentSetsSorted))
+    resultScores <- numeric(length(allScoresSorted))
+    
+    bestFamilyScore <- NA
+    resultFamilyIndex <- 0 # start at 0 because the result may be empty
+    for (f in 1:length(allParentSetsSorted)) {
+      pSet <- allParentSetsSorted[[f]]
+      if (all(pSet %in% possibleParents)) {
+        score <- allScoresSorted[f]
+        if (is.na(bestFamilyScore)) {
+          bestFamilyScore <- score
+        }
+        if ((bestFamilyScore - score) <= pruningDiff) {
+          resultFamilyIndex <- resultFamilyIndex + 1 
+          resultParentSets[[resultFamilyIndex]] <- pSet
+          resultScores[[resultFamilyIndex]] <- score
+        } else {
+          break; # only low scoring families left
+        }
+      }
+    }
+    
+    return(list(scores=resultScores[0:resultFamilyIndex], parentSets=resultParentSets[0:resultFamilyIndex]))
+  }
+  
+  return(list(
+    getFamilyScore = getFamilyScore, 
+    getFamiliesAndScores = getFamiliesAndScores,
+    mSortedScores = mSortedScores, 
+    sortedFamilies = sortedFamilies
+  ))
 }
 
 
@@ -208,15 +252,38 @@ createCachedLogLocalStructureScoringFunction <- function(cardinalities, mObs, ma
   return(logLocalStructureScore)
 }
 
-# Factory that returns a list object with the following elements
-# functLogLocalStructureScore: 
-#   function f(node, parents, order) that computes the log score term of 
-#   node having given parents in a given order
-# mSortedScores: 
-#   mSortedScores[f, i] is the log structure score of the f:th best family for node i
-# sortedFamilies: 
-#   list l1 such that l1[[i]] contains another list l2 where l2[[f]] is the f:th best parent set for node i
-#
+# Factory that returns a function log score(Xi, Pa(X) | D, <)
+#  
+# This version
+# 1. Allows reuse of a sufficient statistics function (e.g. a cache)
+# 2. Uses prior P(G | <) = P(G) = product of (numNodes-1 choose numParents)^(-1) regardless of order
+createLogLocalStructureScoringFunction <- function(cardinalities, maxParents, functSufficientStats) {
+  
+  numNodes <- length(cardinalities)
+  
+  logLocalStructurePrior <- function(node, vParents) {
+    -1*lchoose(numNodes-1, length(vParents))
+  }
+  
+  paramsAndData <- list(
+    getAlphas = function(node, parents) {
+      getBDEuParams(node, parents, cardinalities, equivalentSampleSize=1)
+    },
+    countSuffStats = functSufficientStats
+    )
+  logLocalDataLikelihood <- function(node, vParents) {
+    getLogLocalDataLikelihood(node, vParents, paramsAndData)
+  }
+  
+  logLocalStructureScore <- function(node, vParents) {
+    logLocalStructurePrior(node, vParents) + logLocalDataLikelihood(node, vParents)
+  }
+  
+  
+  # The interface expected by clients has vOrder, even though we don't use it here
+  return(function(node, vParents, vOrder=NA) logLocalStructureScore(node, vParents) )
+}
+
 # 1. Allows reuse of a sufficient statistics function (e.g. a cache)
 # 2. P(G | <) = P(G) = product of (numNodes-1 choose numParents)^(-1) regardless of order
 # 3. Caches terms of P(G | D, <) instead of P(D | G, <) because P(G) independent of order

@@ -28,9 +28,11 @@ logFamilyScore <- function(node, vParents) {
 }
 
 resultList <- computeFamilyScores(logFamilyScore, numberOfNodes=length(nodes), maxParents=2)
-cache <- resultList$getScore
-mSortedScores <- resultList$mSortedScores
-sortedFamilies <- resultList$sortedFamilies
+
+
+# (node, parentSet) specific scores
+
+cache <- resultList$getFamilyScore
 
 test_that("Expected value retrieved from cache", {
   expect_that(cache(1, integer(0)), equals(0))
@@ -67,6 +69,11 @@ test_that("Error if family is not in cache", {
 })
 
 
+# Sorted scores and families
+
+mSortedScores <- resultList$mSortedScores
+sortedFamilies <- resultList$sortedFamilies
+
 test_that("Family scores of node 1 sorted descending", {
   expect_that(mSortedScores[1,1], equals(0))
   expect_that(mSortedScores[2,1], equals(-1))
@@ -79,4 +86,18 @@ test_that("Families of node 1 sorted descending by score", {
   expect_that(sortedFamilies[[1]][[2]], equals(2))
   expect_that(sortedFamilies[[1]][[3]], equals(3))           
   expect_that(sortedFamilies[[1]][[4]], equals(c(2,3)))
+})
+
+
+# Getting high scoring families consistent with an order
+getFamiliesAndScores <- resultList$getFamiliesAndScores
+
+test_that("Only empty parent set can be the high scoring when node is the first in order", {
+  expect_that(getFamiliesAndScores(node=1, 1:12, pruningDiff=1)$scores, equals(0) )
+  expect_that(getFamiliesAndScores(node=1, 1:12, pruningDiff=1)$parentSets, equals( list(integer(0)) ) )
+})
+
+test_that("Only scores and families withing the pruning threshold returned", {
+  expect_that(getFamiliesAndScores(node=1, 12:1, pruningDiff=1)$scores, equals( c(0, -1) ) )
+  expect_that(getFamiliesAndScores(node=1, 12:1, pruningDiff=1)$parentSets, equals( list(integer(0), 2) ) )
 })

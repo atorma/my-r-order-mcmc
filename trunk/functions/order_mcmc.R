@@ -156,26 +156,8 @@ runOrderMCMC <- function(numNodes, maxParents, functLogLocalStructureScore, maxS
   step <- 2
   places <- 1:numNodes
   while (step <= maxSteps) {
-    # switch places of two nodes at random and recalculate score of this suggested new order
-    #cat("Current order", vOrder, fill=T)
-    #cat("Current scores", logOrderScores, fill=T)
     placesToSwitch <- sample(places, 2)
-    #cat("Places to switch", placesToSwitch, fill=T)
     switchResult <- flipNodesInOrder2(vOrder, logOrderScores, placesToSwitch, maxParents, functLogLocalStructureScore)
-    #print("Result of flip algorithm")
-    #print(switchResult)
-    
-    # Test without order switching "improvement"
-#     placesToSwitch <- sort(placesToSwitch)
-#     proposedOrder <- vOrder
-#     tempNode <- proposedOrder[placesToSwitch[1]]
-#     proposedOrder[placesToSwitch[1]] <- proposedOrder[placesToSwitch[2]]
-#     proposedOrder[placesToSwitch[2]] <- tempNode
-#     proposedLogOrderScores <- getLogLocalOrderScores(proposedOrder, functLogLocalOrderScore)
-#     switchResult <- list(newOrder=proposedOrder, newLogOrderScores=proposedLogOrderScores)
-    
-    #print("Result without optimization")
-    #print(switchResult)
     
     accept <- FALSE
     currentLogOrderScore <- sum(logOrderScores)
