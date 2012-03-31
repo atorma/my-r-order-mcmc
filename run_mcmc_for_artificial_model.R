@@ -5,7 +5,7 @@ functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
 
 # Cache all the local structure scores 
-scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents)
+system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
 
 # Replace the local structure scoring function with its cached version
 functLogLocalStructureScore <- function(node, parents, vOrder) {
@@ -13,7 +13,7 @@ functLogLocalStructureScore <- function(node, parents, vOrder) {
 }
 
 # Local order score i.e term of node in log P(D | <)
-pruningDiff <- exp(7) # max difference between log(bestFamilyScore) - log(familyScore)
+pruningDiff <- 7 # best family consistent with an order exp(7) times more probable than worst included in computations
 functLogLocalOrderScore <- function(node, vOrder) {
   getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
 }
@@ -23,7 +23,7 @@ logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderSc
 
 # order-MCMC
 numSamples <- 5000
-system.time(result <- runOrderMCMC(numNodes, maxParents, functLogLocalStructureScore, numSamples))
+system.time(result <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 plot(rowSums(result$logScores), type="l")
 
 # Compute edge probabilities
@@ -41,7 +41,10 @@ lines(xy, col="red")
 
 
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
+functFamiliesAndLogStructureScores <- function(node, vOrder) {
+  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
+}
 system.time({
-  vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, maxParents, functNodeStateProb, functLogLocalStructureScore, sampleLogScores)
+  vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, maxParents, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 getKLDivergence(vObsProbs, vEstimatedObsProbs)

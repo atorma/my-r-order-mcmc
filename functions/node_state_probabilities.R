@@ -92,50 +92,6 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
   })
 }
 
-createStateProbabilityFunctionOld <- function(cardinalities, mObs, equivalentSampleSize=1) {
-  getSuffStats <- createSufficientStatsHelper(cardinalities, mObs)
-  
-  cache <- hash()
-  getKey <- function(node, nodeState, parents, parentStates) {
-    paste(c("n:", node, "s:", nodeState, "p:", parents, "c:", parentStates), collapse=" ")
-  }
-  
-  return(function(node, nodeState, parents=integer(0), parentStates=integer(0), parentsSorted=FALSE) {
-    #cat("Requested node", node, "state", nodeState, "parents", parents, "configuration", parentStates, fill=T)
-    
-    if (length(parents) != length(parentStates)) stop("Inconsistent length of parent and parent state vectors")
-    if (length(nodeState) != 1 || length(node) != 1) stop("Only one node and node state allowed")
-    
-    # for indexation to be insentitive to parent ordering, we must sort (parents, parentStates) 
-    # by parent node number
-    if (!parentsSorted) {
-      orderIndex <- order(parents)
-      parents <- parents[orderIndex]
-      parentStates <- parentStates[orderIndex]
-    }
-    
-    key <- getKey(node, nodeState, parents, parentStates)
-    thetaExpected <- cache[[key]]
-    
-    if (is.null(thetaExpected)) {
-      # assumption: parent states i.e. rows of matrix are in order obtained 
-      # by varying states the quicker the smaller the number of the node
-      suffStats <- getSuffStats(node, parents)
-      alphas <- getBDEuParams(node, parents, cardinalities, equivalentSampleSize)
-      posteriorCounts <- suffStats + alphas
-      
-      parentConfigIndex <- getIndexFromConfig(parentStates, cardinalities[parents])
-      thetaExpected <- posteriorCounts[parentConfigIndex, nodeState]/sum(posteriorCounts[parentConfigIndex,])
-      
-      cache[[key]] <- thetaExpected
-    }
-    
-    return(thetaExpected)
-  })
-}
-
-
-
 # Computes the probabilities of state vectors given node orderings.
 # If multiple orders are inputed, then the result is the mean probability of 
 # the state over the orders.
@@ -144,29 +100,18 @@ createStateProbabilityFunctionOld <- function(cardinalities, mObs, equivalentSam
 # mOrders: mOrders[o, p] is the node at position p of the o:th order
 # maxParents: maximum number of parents any node can have
 # functNodeStateProbability: function f(node, nodeState, parents, parentState) that returns the probability of a node state given a parent configuration
-# functLogLocalStructureScore: function f(node, parents, order) that returns the natural logarithm of score(X, Pa(X) | D, <)
-# mlogLocalOrderScores (optional): mlogLocalOrderScores[o, node] is the log score contribution of node to the o:th order score
-getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functLogLocalStructureScore, mlogLocalOrderScores=NULL) {
+# functFamiliesAndScores:
+getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functFamiliesAndLogStructureScores) {
   if (!is.matrix(mStates)) {
     mStates <- matrix(mStates, nrow=1)
   }
   if (!is.matrix(mOrders)) {
     mOrders <- matrix(mOrders, nrow=1)
   }
-  if (length(mlogLocalOrderScores) > 0 && !is.matrix(mlogLocalOrderScores)) {
-    mlogLocalOrderScores <- matrix(mlogLocalOrderScores, nrow=1)
-  }
   
   if (length(mOrders) == 0) return(NA)
-  
-  if (length(mlogLocalOrderScores) > 0 && (nrow(mOrders) != nrow(mlogLocalOrderScores))) stop("Number of orders inconsistent with number of order score vectors")
   if (ncol(mStates) != ncol(mOrders)) stop("state vectors must have as many elements as order vectors") 
-  
-  
-  if (is.null(mlogLocalOrderScores)) {
-    functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
-  }
-  
+    
   # In log scale, P(X | D, <) is computed as sum of node specific terms. 
   # Each term requires summing over all possible parent sets of the node,
   # which is expensive. 
@@ -193,22 +138,22 @@ getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeSta
   getLogNodeStateProbability <- function(node, vStates, orderIndex) {
     vOrder <- mOrders[orderIndex,]
     
+    parentSetsAndLogStructureScores <- functFamiliesAndLogStructureScores(node, vOrder)
+    
     # numerator in log scale
     # an expensive operation
-    parentSets <- getParentSets(node, vOrder, 0:maxParents) # parent sets are sorted ascending
+    parentSets <- parentSetsAndLogStructureScores$parentSets # all parent sets are sorted ascending
+    logStructureScores <- parentSetsAndLogStructureScores$scores
+    
     familyScores <- numeric(length(parentSets))
     for (j in 1:length(parentSets)) {
       parents <- parentSets[[j]]
-      familyScores[j] <- log(functNodeStateProbability(node, vStates[node], parents, vStates[parents], parentsSorted=TRUE)) + functLogLocalStructureScore(node, parents, vOrder)
+      familyScores[j] <- log(functNodeStateProbability(node, vStates[node], parents, vStates[parents], parentsSorted=TRUE)) + logStructureScores[j]
     }
     logWeighedProbabilities <- getLogSumOfExponentials(familyScores)
     
     # denominators in log scale
-    logSumOfWeights <- mlogLocalOrderScores[orderIndex, node]
-    if (is.null(logSumOfWeights)) {
-      # an expensive operation
-      logSumOfWeights <- functLogLocalOrderScore(node, vOrder)
-    }
+    logSumOfWeights <- getLogSumOfExponentials(logStructureScores)
     
     #cat("Computed P(node=", node, "state=", vStates[node], "X=", vStates, "order=", vOrder, fill=T)
     
