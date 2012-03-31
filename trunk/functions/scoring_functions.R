@@ -211,6 +211,7 @@ computeFamilyScores <- function(functScore, numberOfNodes, maxParents) {
           resultParentSets[[resultFamilyIndex]] <- pSet
           resultScores[[resultFamilyIndex]] <- score
         } else {
+          #cat("Pruning threshold exceeded at all family index", f, ", result family index", resultFamilyIndex, fill=T)
           break; # only low scoring families left
         }
       }
