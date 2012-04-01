@@ -5,20 +5,51 @@ numNodes <- length(varNames)
 cardinalities <- rep(3, numNodes)
 maxParents <- 3
 
-# Function for log(score(Xi, Pa(Xi) | D, <))
-functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents)
-functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents, functLogLocalStructureScore)
+mTestObs <- as.matrix(test_data)
+
+# Function for sufficient stats
+functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
+
+# Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
+
+# Cache all the local structure scores 
+system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
+
+# Replace the local structure scoring function with its cached version
+functLogLocalStructureScore <- function(node, parents, vOrder) {
+  scoreList$getFamilyScore(node, parents) 
+}
+
+# Local order score i.e term of node in log P(D | <)
+pruningDiff <- 7 # best family consistent with an order exp(pruningDiff) times more probable than worst included in computations
+functLogLocalOrderScore <- function(node, vOrder) {
+  getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
+}
+
 
 # order-MCMC
 numSamples <- 25000
-system.time(result <- runOrderMCMC(numNodes, maxParents, functLogLocalStructureScore, numSamples))
-plot(rowSums(result$logScores), type="l")
+# Chain 1
+system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+plot(rowSums(result1$logScores), type="l")
+# Chain 2
+system.time(result2 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+plot(rowSums(result2$logScores), type="l")
+
+
+# Combine samples of two chains
+sampleIdx <- seq(from=5000, to=numSamples, by=200)
+samples1 <- result1$samples[sampleIdx,]
+sampleLogScores1 <- result1$logScores[sampleIdx,]
+samples2 <- result2$samples[sampleIdx,]
+sampleLogScores2 <- result2$logScores[sampleIdx,]
+samples <- rbind(samples1, samples2)
+sampleLogScores <- rbind(sampleLogScores1, sampleLogScores2)
 
 # Compute edge probabilities
-sampleIdx <- seq(from=5000, to=numSamples, by=200)
-samples <- result$samples[sampleIdx,]
-sampleLogScores <- result$logScores[sampleIdx,]
 mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores)
+
 
 # List of edge probabilities
 sourceNames <- character(numNodes^2 - numNodes)
@@ -40,10 +71,13 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 
 
 # compute the predicted test vector probabilities using all the samples
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs)
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
+functFamiliesAndLogStructureScores <- function(node, vOrder) {
+  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
+}
 system.time({
-    vEstTestObsProbs <- getStateVectorProbability(mTestObs, samples, maxParents, functNodeStateProb, functLogLocalStructureScore, samples.logLocalOrderScores)
+  vEstimatedObsProbs <- getStateVectorProbability(mTestObs, samples, maxParents, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
+
 # normalize vEstTestObsProbs
 vEstTestObsProbsNorm <- vEstTestObsProbs/sum(vEstTestObsProbs)
-
