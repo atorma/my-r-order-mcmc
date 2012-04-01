@@ -34,7 +34,7 @@ functFamiliesAndLogStructureScores <- function(node, vOrder) {
 
 
 # order-MCMC
-numSamples <- 25000
+numSamples <- 50000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 plot(rowSums(result1$logScores), type="l", col="red")
