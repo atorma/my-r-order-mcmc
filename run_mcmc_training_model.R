@@ -80,8 +80,8 @@ rownames(edgeRanking) <- NULL
 sampleSubset <- samples[sample(1:nrow(samples), 100),] # assuming all orders equally probable!
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
 system.time({
-  vEstimatedObsProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
+  vEstimatedTestProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 
-# normalize vEstTestObsProbs
-vEstTestObsProbsNorm <- vEstTestObsProbs/sum(vEstTestObsProbs)
+# normalize the state vector probabilities
+vEstimatedTestProbsNorm <- vEstimatedTestProbs/sum(vEstimatedTestProbs)
