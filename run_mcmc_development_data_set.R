@@ -11,7 +11,7 @@ mTestObs <- as.matrix(devel_data)
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
@@ -77,7 +77,7 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 rownames(edgeRanking) <- NULL
 
 # compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 100),] # assuming all orders equally probable!
+sampleSubset <- samples[sample(1:nrow(samples), 1),] # assuming all orders equally probable!
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
 system.time({
   vEstimatedObsProbs <- getStateVectorProbability(mObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
