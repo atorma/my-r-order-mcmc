@@ -77,17 +77,17 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 rownames(edgeRanking) <- NULL
 
 # compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 50),] # assuming all orders equally probable!
+sampleSubset <- samples[sample(1:nrow(samples), 100),] # assuming all orders equally probable!
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
 system.time({
   vEstimatedObsProbs <- getStateVectorProbability(mObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 
-# normalize vEstTestObsProbs
-vEstTestObsProbsNorm <- vEstTestObsProbs/sum(vEstTestObsProbs)
+# normalize estimated vector probabilities
+vEstimatedObsProbsNorm <- vEstimatedObsProbs/sum(vEstimatedObsProbs)
 
 
 # known probabilities
-vKnownProbs <- as.vector(devel_probs)
+vKnownProbs <- devel_probs[,1]
 vKnownProbs <- vKnownProbs/sum(vKnownProbs)
-getKLDivergence(vKnownProbs, vEstimatedObsProbs)
+getKLDivergence(vKnownProbs, vEstimatedObsProbsNorm)
