@@ -214,7 +214,7 @@ getStateVectorProbability <- function(mStates, mOrders, functNodeStateProbabilit
   # Mean P(X | D) over all the input orders 
   getMeanProbabilityOverOrders <- function(vStates) {
     probabilities <- sapply(1:nrow(mOrders), function(orderIndex) getProbabilityGivenOrder(vStates, orderIndex))
-    #cat("Computed mean probability of state", stateIndex, "over all orders", fill=T)
+    cat("Computed mean probability of state", stateIndex, "over all orders", fill=T)
     stateIndex <<- stateIndex + 1
     return(mean(probabilities))
   }
