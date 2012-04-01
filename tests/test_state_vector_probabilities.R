@@ -3,7 +3,6 @@ context("Computation of state vector posterior probabilities")
 cardinalities <- c(3, 2, 2)
 inputOrder <- c(3, 2, 1)
 inputState <- c(3, 1, 1)
-maxParents <- 2
 
 mockFamiliesAndLogStructureScores <- function(node, vOrder) {
   #cat("Node", node, "order", vOrder, fill=T)
@@ -63,13 +62,13 @@ stateProbsTimesScores <- c(1/2*exp(-1) + 1/3*exp(-2) + 1/4*exp(-3) + 1/5*exp(-4)
 expectedProb <- prod(stateProbsTimesScores)/prod(orderScores)
 
 # Computed P(x | D, <)
-computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockFamiliesAndLogStructureScores)
+computedProb <- getStateVectorProbability(inputState, inputOrder, mockStateProbability, mockFamiliesAndLogStructureScores)
 test_that("Posterior probability of state vector computed as expected", {
   expect_that(computedProb, equals(expectedProb))
 })
 
 # Computed P(x | D, <)
-computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockFamiliesAndLogStructureScores)
+computedProb <- getStateVectorProbability(inputState, inputOrder, mockStateProbability, mockFamiliesAndLogStructureScores)
 test_that("Posterior probability of state vector computed as expected when order scores given", {
   expect_that(computedProb, equals(expectedProb))
 })

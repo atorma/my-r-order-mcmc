@@ -106,8 +106,6 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
 #   vStates[s, i] is the state of node i in state vector s
 # mOrders: 
 #   mOrders[o, p] is the node at position p of the o:th order
-# maxParents: 
-#   maximum number of parents any node can have
 # functNodeStateProbability: 
 #   function f(node, nodeState, parents, parentState) that returns the 
 #   probability of a node state given a parent configuration
@@ -116,7 +114,7 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
 #   Whether to cache results for each (node, nodeState predecessors, predecessorStates) 
 #   This reduce computation time the more the similar input states and orders are. It can
 #   also be a huge memory hog.
-getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functFamiliesAndLogStructureScores, useCache=FALSE) {
+getStateVectorProbability <- function(mStates, mOrders, functNodeStateProbability, functFamiliesAndLogStructureScores, useCache=FALSE) {
   if (!is.matrix(mStates)) {
     mStates <- matrix(mStates, nrow=1)
   }
