@@ -27,15 +27,20 @@ functLogLocalOrderScore <- function(node, vOrder) {
   getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
 }
 
+# This is needed to compute edge and vector probabilities 
+functFamiliesAndLogStructureScores <- function(node, vOrder) {
+  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
+}
+
 
 # order-MCMC
 numSamples <- 25000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
-plot(rowSums(result1$logScores), type="l")
+plot(rowSums(result1$logScores), type="l", col="red")
 # Chain 2
 system.time(result2 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
-plot(rowSums(result2$logScores), type="l")
+lines(rowSums(result2$logScores), type="l", col="blue")
 
 
 # Combine samples of two chains
@@ -48,8 +53,9 @@ samples <- rbind(samples1, samples2)
 sampleLogScores <- rbind(sampleLogScores1, sampleLogScores2)
 
 # Compute edge probabilities
-mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores)
-
+system.time(mEdgeProb <- getEdgeProbabilities2(samples, functFamiliesAndLogStructureScores))
+rownames(mEdgeProb) <- varNames
+colnames(mEdgeProb) <- varNames
 
 # List of edge probabilities
 sourceNames <- character(numNodes^2 - numNodes)
@@ -68,13 +74,10 @@ for (i in 1:numNodes) {
 }
 edgeRanking <- data.frame(source=sourceNames, target=targetNames, probability=edgeProbs)
 edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing=TRUE), ]
-
+rownames(edgeRanking) <- NULL
 
 # compute the predicted test vector probabilities using all the samples
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
-functFamiliesAndLogStructureScores <- function(node, vOrder) {
-  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
-}
 system.time({
   vEstimatedObsProbs <- getStateVectorProbability(mTestObs, samples, maxParents, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
