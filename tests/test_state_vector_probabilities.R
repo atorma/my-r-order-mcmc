@@ -5,26 +5,29 @@ inputOrder <- c(3, 2, 1)
 inputState <- c(3, 1, 1)
 maxParents <- 2
 
-mockLogLocalStructureScore <- function(node, vParents, vOrder) {
-  #cat("Node", node, "parents", vParents, "order", vOrder, fill=T)
+mockFamiliesAndLogStructureScores <- function(node, vOrder) {
+  #cat("Node", node, "order", vOrder, fill=T)
   
   if (!all(vOrder == inputOrder)) stop("Invalid order")
   
   if (node == 1) {
-    if (length(vParents) == 0) return(-1)
-    else if (all(vParents == 3)) return(-2)
-    else if (all(vParents == 2)) return(-3)
-    else if (all(vParents == c(2,3))) return(-4)
-    
+    return(list(
+      parentSets = list(integer(0), 3, 2, c(2, 3)),
+      scores = c(-1, -2, -3, -4)
+    ))
   } else if (node == 2) {
-    if (length(vParents) == 0) return(-1)
-    else if (all(vParents == 3)) return(-2)    
-    
+    return(list(
+      parentSets = list(integer(0), 3),
+      scores = c(-1, -2)
+    ))
   } else if (node == 3) {
-    if (length(vParents) == 0) return(-1)
+    return(list(
+      parentSets = list(integer(0)),
+      scores = -1
+    ))
   } 
   
-  stop("Invalid node or parent set")
+  stop("Invalid node or order")
 }
 
 mockStateProbability <- function(node, nodeState, vParents, vParentStates, parentsSorted) {
@@ -60,13 +63,13 @@ stateProbsTimesScores <- c(1/2*exp(-1) + 1/3*exp(-2) + 1/4*exp(-3) + 1/5*exp(-4)
 expectedProb <- prod(stateProbsTimesScores)/prod(orderScores)
 
 # Computed P(x | D, <)
-computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockLogLocalStructureScore)
+computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockFamiliesAndLogStructureScores)
 test_that("Posterior probability of state vector computed as expected", {
   expect_that(computedProb, equals(expectedProb))
 })
 
 # Computed P(x | D, <)
-computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockLogLocalStructureScore, log(orderScores))
+computedProb <- getStateVectorProbability(inputState, inputOrder, maxParents, mockStateProbability, mockFamiliesAndLogStructureScores)
 test_that("Posterior probability of state vector computed as expected when order scores given", {
   expect_that(computedProb, equals(expectedProb))
 })

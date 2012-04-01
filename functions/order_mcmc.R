@@ -77,6 +77,8 @@ runOrderMCMC <- function(numNodes, maxParents, functLogLocalOrderScore, maxSteps
     
     recordStep(vOrder, logOrderScores)
     step <- step + 1
+
+    #cat("MCMC step ", step, "completed", fill=T)
   }
   
   return(list(logScores=mcmcLogScores, samples=mcmcSamples, numAccepted=numAccepted, numRejected=numRejected))

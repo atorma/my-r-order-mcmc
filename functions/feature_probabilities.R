@@ -20,7 +20,7 @@ getEdgeProbability <- function(edge, mOrders, maxParents, functLogLocalStructure
   }
   
   # To compute the probability from one order
-  getPr <- function(orderIndex) {
+  getProbability <- function(orderIndex) {
     vOrder <- mOrders[orderIndex,]
     targetLogLocalOrderScore <- targetLogLocalOrderScores[orderIndex]
     
@@ -43,7 +43,7 @@ getEdgeProbability <- function(edge, mOrders, maxParents, functLogLocalStructure
     return(exp(logEdgeOrderScore - targetLogLocalOrderScore))
   }
   
-  probabilities <- sapply(1:nrow(mOrders), getPr)
+  probabilities <- sapply(1:nrow(mOrders), getProbability)
   return(mean(probabilities))
 }
 

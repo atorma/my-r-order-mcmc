@@ -19,16 +19,18 @@
 # The returned function caches parameters tables.
 #
 # See functions getIndexFromConfig() and getConfigFromIndex()
-createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL) {
+createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL, useCache=TRUE) {
   if (is.null(functSuffStats)) {
     getSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
   } else {
     getSuffStats <- functSuffStats
   }
   
-  cache <- hash()
-  getKey <- function(node, parents) {
-    paste(c(parents, node), collapse=" ")
+  if (useCache) {
+    cache <- hash()
+    getKey <- function(node, parents) {
+      paste(c(parents, node), collapse=" ")
+    }
   }
   
   return(function(node, parents=integer(0), parentsSorted=FALSE) {
@@ -40,8 +42,12 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
       parents <- sort(parents)
     }
     
-    key <- getKey(node, parents)
-    thetasExpected <- cache[[key]]
+    if (useCache) {
+      key <- getKey(node, parents)
+      thetasExpected <- cache[[key]]
+    } else {
+      thetasExpected <- NULL
+    }
     
     if (is.null(thetasExpected)) {
       # assumption: getSuffStats() returns parent states 
@@ -52,7 +58,7 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
       
       thetasExpected <- posteriorCounts/rowSums(posteriorCounts)
       
-      cache[[key]] <- thetasExpected
+      if (useCache) cache[[key]] <- thetasExpected
     }
     
     return(thetasExpected)
@@ -66,9 +72,9 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
 #
 # Uses Bayesian Dirichlet Equivalent uniform (BDEu) prior 
 # with given equivalent sample size.
-createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL) {
+createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL, useCache=FALSE) {
   
-  getThetaMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, equivalentSampleSize, functSuffStats)
+  getThetaMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, equivalentSampleSize, functSuffStats, useCache)
   
   return(function(node, nodeState, parents=integer(0), parentStates=integer(0), parentsSorted=FALSE) {
     #cat("Requested node", node, "state", nodeState, "parents", parents, "configuration", parentStates, fill=T)
@@ -96,12 +102,21 @@ createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSample
 # If multiple orders are inputed, then the result is the mean probability of 
 # the state over the orders.
 #
-# mStates: vStates[s, i] is the state of node i in state vector s
-# mOrders: mOrders[o, p] is the node at position p of the o:th order
-# maxParents: maximum number of parents any node can have
-# functNodeStateProbability: function f(node, nodeState, parents, parentState) that returns the probability of a node state given a parent configuration
-# functFamiliesAndScores:
-getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functFamiliesAndLogStructureScores) {
+# mStates: 
+#   vStates[s, i] is the state of node i in state vector s
+# mOrders: 
+#   mOrders[o, p] is the node at position p of the o:th order
+# maxParents: 
+#   maximum number of parents any node can have
+# functNodeStateProbability: 
+#   function f(node, nodeState, parents, parentState) that returns the 
+#   probability of a node state given a parent configuration
+# functFamiliesAndLogStructureScores:
+# useCache (default FALSE):
+#   Whether to cache results for each (node, nodeState predecessors, predecessorStates) 
+#   This reduce computation time the more the similar input states and orders are. It can
+#   also be a huge memory hog.
+getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeStateProbability, functFamiliesAndLogStructureScores, useCache=FALSE) {
   if (!is.matrix(mStates)) {
     mStates <- matrix(mStates, nrow=1)
   }
@@ -122,15 +137,16 @@ getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeSta
   # we can use previously computed term of node 3 in its state 1 with 
   # _possible_ parents {1, 2} in states {1, 3} regardless of what nodes
   # and state come after node 3 in the order.
+  if (useCache) {
+    cache <- hash()
   
-  cache <- hash()
-
-  getCacheKey <- function(node, predecessorNodes, vStates) {
-    nodeState <- vStates[node]
-    predecessorNodes <- sort(predecessorNodes)
-    predecessorStates <- vStates[predecessorNodes]
-    
-    return(paste(c("n:", node, "ns:", nodeState, "p:", predecessorNodes, "ps:", predecessorStates), collapse=" "))
+    getCacheKey <- function(node, predecessorNodes, vStates) {
+      nodeState <- vStates[node]
+      predecessorNodes <- sort(predecessorNodes)
+      predecessorStates <- vStates[predecessorNodes]
+      
+      return(paste(c("n:", node, "ns:", nodeState, "p:", predecessorNodes, "ps:", predecessorStates), collapse=" "))
+    }
   }
   
   # log P(Xi | D, <) for given node in a given state vector.
@@ -171,17 +187,22 @@ getStateVectorProbability <- function(mStates, mOrders, maxParents, functNodeSta
     for (i in 1:length(vOrder)) {
       node <- vOrder[i]
       
-      if (i == 1) {
-        predecessorNodes <- integer(0)
+      if (useCache) {
+        if (i == 1) {
+          predecessorNodes <- integer(0)
+        } else {
+          predecessorNodes <- vOrder[1:(i-1)]
+        }
+        cacheKey <- getCacheKey(node, predecessorNodes, vStates)
+        
+        logNodeStateProbability <- cache[[cacheKey]]
+        if (is.null(logNodeStateProbability)) {
+          logNodeStateProbability <- getLogNodeStateProbability(node, vStates, orderIndex)
+          cache[[cacheKey]] <- logNodeStateProbability
+        }
+        
       } else {
-        predecessorNodes <- vOrder[1:(i-1)]
-      }
-      cacheKey <- getCacheKey(node, predecessorNodes, vStates)
-      
-      logNodeStateProbability <- cache[[cacheKey]]
-      if (is.null(logNodeStateProbability)) {
         logNodeStateProbability <- getLogNodeStateProbability(node, vStates, orderIndex)
-        cache[[cacheKey]] <- logNodeStateProbability
       }
       
       logNodeStateProbabilities[node] <- logNodeStateProbability

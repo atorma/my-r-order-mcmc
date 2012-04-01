@@ -13,12 +13,12 @@ functLogLocalStructureScore <- function(node, parents, vOrder) {
 }
 
 # Local order score i.e term of node in log P(D | <)
-pruningDiff <- 7 # best family consistent with an order exp(7) times more probable than worst included in computations
+pruningDiff <- 7 # best family consistent with an order exp(pruningDiff) times more probable than worst included in computations
 functLogLocalOrderScore <- function(node, vOrder) {
   getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
 }
 
-# Score of best order
+# Score of best order since we know it
 logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderScore))
 
 # order-MCMC
@@ -30,7 +30,7 @@ plot(rowSums(result$logScores), type="l")
 sampleIdx <- seq(from=1000, to=numSamples, by=100)
 samples <- result$samples[sampleIdx,]
 sampleLogScores <- result$logScores[sampleIdx,]
-mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores) 
+system.time(mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores))
 
 # Plot ROC curve
 roc <- getRocCurve(mEdgeProb, mAdj)
