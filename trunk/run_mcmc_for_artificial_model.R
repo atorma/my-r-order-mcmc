@@ -2,7 +2,7 @@
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
@@ -18,6 +18,11 @@ functLogLocalOrderScore <- function(node, vOrder) {
   getLogSumOfExponentials( scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)$scores )
 }
 
+# This is needed to compute edge and vector probabilities 
+functFamiliesAndLogStructureScores <- function(node, vOrder) {
+  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
+}
+
 # Score of best order since we know it
 logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderScore))
 
@@ -30,7 +35,7 @@ plot(rowSums(result$logScores), type="l")
 sampleIdx <- seq(from=1000, to=numSamples, by=100)
 samples <- result$samples[sampleIdx,]
 sampleLogScores <- result$logScores[sampleIdx,]
-system.time(mEdgeProb <- getEdgeProbabilities(samples, maxParents, functLogLocalStructureScore, sampleLogScores))
+system.time(mEdgeProb <- getEdgeProbabilities(samples, functFamiliesAndLogStructureScores))
 
 # Plot ROC curve
 roc <- getRocCurve(mEdgeProb, mAdj)
@@ -41,10 +46,7 @@ lines(xy, col="red")
 
 
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
-functFamiliesAndLogStructureScores <- function(node, vOrder) {
-  scoreList$getFamiliesAndScores(node, vOrder, pruningDiff)
-}
 system.time({
-  vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, maxParents, functNodeStateProb, functFamiliesAndLogStructureScores)
+  vEstimatedObsProbs <- getStateVectorProbability(mUniqueObs, samples, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 getKLDivergence(vObsProbs, vEstimatedObsProbs)

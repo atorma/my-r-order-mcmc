@@ -100,10 +100,11 @@ mObs[3,] <- c(2, 1, 3)
 mObs[4,] <- c(2, 2, 1)
 mObs[5,] <- c(2, 1, 3)
 
-logScoreOrder123 <- -14.7625887083262
+# This order score assumes using prior P(G | <) = (n-1 choose |Pa(Xi)|)
+logScoreOrder123 <- -14.83126557412244928003
 
-
-functLogLocalStructureScore <- createCachedLogLocalStructureScoringFunction(cardinalities, mObs, maxParents=2)
+functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats)
 functLogLocalOrderScore <- createCustomLogLocalOrderScoringFunction(maxParents=2, functLogLocalStructureScore)
 test_that("Order score computed as expected when scoring function created using factory function", {
   expect_that(sum(getLogLocalOrderScores(vOrder=c(1,2,3), functLogLocalOrderScore)), equals(logScoreOrder123))

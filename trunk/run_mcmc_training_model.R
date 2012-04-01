@@ -11,7 +11,7 @@ mTestObs <- as.matrix(test_data)
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, maxParents, functSuffStats)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
