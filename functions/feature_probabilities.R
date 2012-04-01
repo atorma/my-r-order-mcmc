@@ -39,7 +39,14 @@ getEdgeProbability <- function(edge, mOrders, functFamiliesAndLogStructureScores
         logNumeratorScores[index] <- logStructureScores[j]
       }
     }
-    logNumeratorScores <- logNumeratorScores[0:index]
+    
+    # We didn't find any parent sets containing the source node consistent with the order,
+    # so probability of the edge given the order is zero
+    if (index == 0) {
+      return(0)
+    }
+    
+    logNumeratorScores <- logNumeratorScores[1:index]
     logEdgeOrderScore <- getLogSumOfExponentials(logNumeratorScores)
     
     return(exp(logEdgeOrderScore - targetLogLocalOrderScore))

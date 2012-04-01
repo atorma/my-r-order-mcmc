@@ -1,11 +1,11 @@
 # Data and parameters for MCMC
-mObs <- as.matrix(training_data)
-varNames <- names(training_data)
+mObs <- as.matrix(devel_data)
+varNames <- names(devel_data)
 numNodes <- length(varNames)
 cardinalities <- rep(3, numNodes)
 maxParents <- 3
 
-mTestObs <- as.matrix(test_data)
+mTestObs <- as.matrix(devel_data)
 
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
@@ -34,7 +34,7 @@ functFamiliesAndLogStructureScores <- function(node, vOrder) {
 
 
 # order-MCMC
-numSamples <- 50000
+numSamples <- 25000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 plot(rowSums(result1$logScores), type="l", col="red")
@@ -77,11 +77,17 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 rownames(edgeRanking) <- NULL
 
 # compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 100),] # assuming all orders equally probable!
+sampleSubset <- samples[sample(1:nrow(samples), 50),] # assuming all orders equally probable!
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
 system.time({
-  vEstimatedObsProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
+  vEstimatedObsProbs <- getStateVectorProbability(mObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 
 # normalize vEstTestObsProbs
 vEstTestObsProbsNorm <- vEstTestObsProbs/sum(vEstTestObsProbs)
+
+
+# known probabilities
+vKnownProbs <- as.vector(devel_probs)
+vKnownProbs <- vKnownProbs/sum(vKnownProbs)
+getKLDivergence(vKnownProbs, vEstimatedObsProbs)
