@@ -21,43 +21,47 @@ test_that("Log local structure prior is -Inf for impossible cases", {
 
 
 
-logScore <- lgamma(1) - lgamma(6) + lgamma(1/3+0) + lgamma(1/3+3) + lgamma(1/3+2) - 3*lgamma(1/3)
 node <- 1
 parents <- vector()
-paramsAndData <- list(
-  getAlphas = function(node, parents) {
-    matrix(1/3, 1, 3)
-  },
-  countSuffStats = function(node, parents) {
-    retVal <- matrix(0, 1, 3)
-    retVal[1,] <- c(0, 3, 2)
-    return(retVal)
-  }
-)
+mockGetAlphas = function(node, parents) {
+  if (node != 1 || length(parents) != 0) stop("Wrong node or parents")
+  
+  matrix(1/3, 1, 3)
+}
+mockGetSuffStats = function(node, parents) {
+  if (node != 1 || length(parents) != 0) stop("Wrong node or parents")
+  
+  retVal <- matrix(0, nrow=1, ncol=3)
+  retVal[1,] <- c(0, 3, 2)
+  return(retVal)
+}
+logScore <- (lgamma(3*1/3) - lgamma(3*1/3 + 0+3+2)) + (lgamma(1/3+0) + lgamma(1/3+3) + lgamma(1/3+2) - 3*lgamma(1/3))
 
 test_that("Log likelihood of a node without parents computed correctly", {
-  expect_that(getLogLocalDataLikelihood(node, parents, paramsAndData), equals(logScore))
+  expect_that(getLogLocalDataLikelihood(node, parents, mockGetAlphas, mockGetSuffStats), equals(logScore))
 })
 
 
 node <- 1
-parents <- vector()
-logScore <- lgamma(3/9) - lgamma(3/9+2) + lgamma(1/9+0) + lgamma(1/9+1) + lgamma(1/9+1) - 3*lgamma(1/9)  +  lgamma(3/9) - lgamma(3/9+3) + lgamma(1/9+0) + lgamma(1/9+2) + lgamma(1/9+1) - 3*lgamma(1/9)  +  lgamma(3/9) - lgamma(3/9+0) + 3*lgamma(3/9+0) - 3*lgamma(3/9)
-paramsAndData <- list(
-  getAlphas = function(node, parents) {
-    matrix(1/9, 3, 3)
-  },
-  countSuffStats = function(node, parents) {
-    retVal <- matrix(0, 3, 3)
-    retVal[1,] <- c(0, 1, 1)
-    retVal[2,] <- c(0, 2, 1)
-    retVal[3,] <- c(0, 0, 0)
-    return(retVal)
-  }
-)
+parents <- 2
+mockgetAlphas = function(node, parents) {
+  if (node != 1 || parents != 2) stop("Wrong node or parents")
+  
+  matrix(1/9, nrow=3, ncol=3)
+}
+mockGetSuffStats = function(node, parents) {
+  if (node != 1 || parents != 2) stop("Wrong node or parents")
+  
+  retVal <- matrix(0, nrow=3, ncol=3)
+  retVal[1,] <- c(0, 1, 1)
+  retVal[2,] <- c(0, 2, 1)
+  retVal[3,] <- c(0, 0, 0)
+  return(retVal)
+}
+logScore <- ( (lgamma(3/9) - lgamma(3/9 + 0+1+1)) + (lgamma(1/9 + 0) + lgamma(1/9 + 1) + lgamma(1/9 + 1) - 3*lgamma(1/9)) )  + ( (lgamma(3/9) - lgamma(3/9 + 0+2+1)) + (lgamma(1/9+0) + lgamma(1/9+2) + lgamma(1/9+1) - 3*lgamma(1/9)) )  +  ( (lgamma(3/9) - lgamma(3/9 + 0+0+0)) + (3*lgamma(3/9+0) - 3*lgamma(3/9)) )
 
 test_that("Log likelihood of a node with 1 parent computed correctly", {
-  expect_that(getLogLocalDataLikelihood(node, parents, paramsAndData), equals(logScore))
+  expect_that(getLogLocalDataLikelihood(node, parents, mockgetAlphas, mockGetSuffStats), equals(logScore))
 })
 
 
