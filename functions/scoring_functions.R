@@ -19,10 +19,21 @@ getLogLocalStructurePrior <- function(node, vParents, vOrder) {
 }
 
 
-# Computes the term of a node in log P(D | G)
-getLogLocalDataLikelihood <- function(node, vParents, paramsAndData) {
-  alphas <- paramsAndData$getAlphas(node, vParents)
-  suffStat <- paramsAndData$countSuffStats(node, vParents)
+# Computes the term of a node in log P(D | G) using BDe scoring.
+#
+# node:
+#   node index
+# vParents:
+#   indexes of parent nodes
+# functGetPriorParamMatrix
+#   a function f(node, parents) that returns a matrix alpha of Dirichlet parameters such that
+#   alpha[j, k] is the parameter related to j:th configuration of parents and k:th node state
+# functGetSuffStatsMatrix
+#   a function g(node, parents) that returns a matrix N of sufficient statistics such that
+#   N[j, k] is the number of times node has been in state k and when parents were in j:th configuration
+getLogLocalDataLikelihood <- function(node, vParents, functGetPriorParamMatrix, functGetSuffStatsMatrix) {
+  alphas <- functGetPriorParamMatrix(node, vParents)
+  suffStat <- functGetSuffStatsMatrix(node, vParents)
   
   score <- sum( lgamma(rowSums(alphas)) - lgamma(rowSums(alphas) + rowSums(suffStat)) + rowSums(lgamma(alphas + suffStat) - lgamma(alphas)) )
   
@@ -49,7 +60,7 @@ getLogLocalStructureScore <- function(node, vParents, vOrder, functLogLocalStruc
 # This version
 # 1. Allows reuse of a sufficient statistics function (e.g. a cache)
 # 2. Uses prior P(G | <) = P(G) = product of (numNodes-1 choose numParents)^(-1) regardless of order
-createLogLocalStructureScoringFunction <- function(cardinalities, functSufficientStats) {
+createLogLocalStructureScoringFunction <- function(cardinalities, functSufficientStats, equivalentSampleSize=1) {
   
   numNodes <- length(cardinalities)
   
@@ -57,14 +68,12 @@ createLogLocalStructureScoringFunction <- function(cardinalities, functSufficien
     -1*lchoose(numNodes-1, length(vParents))
   }
   
-  paramsAndData <- list(
-    getAlphas = function(node, parents) {
-      getBDEuParams(node, parents, cardinalities, equivalentSampleSize=1)
-    },
-    countSuffStats = functSufficientStats
-    )
+  getAlphas = function(node, parents) {
+    getBDEuParams(node, parents, cardinalities, equivalentSampleSize)
+  }
+
   logLocalDataLikelihood <- function(node, vParents) {
-    getLogLocalDataLikelihood(node, vParents, paramsAndData)
+    getLogLocalDataLikelihood(node, vParents, getAlphas, functSufficientStats)
   }
   
   logLocalStructureScore <- function(node, vParents) {
@@ -72,7 +81,7 @@ createLogLocalStructureScoringFunction <- function(cardinalities, functSufficien
   }
   
   
-  # The interface expected by clients has vOrder, even though we don't use it here
+  # The interface expected by clients has parameter vOrder, even though we don't use it here
   return(function(node, vParents, vOrder=NA) logLocalStructureScore(node, vParents) )
 }
 

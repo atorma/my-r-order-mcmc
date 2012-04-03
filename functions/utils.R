@@ -1,20 +1,3 @@
-
-# Wraps parameters and data into functions.
-#
-# a function to get BDEeu prior parameters 
-# a function to compute sufficient statistics
-wrapParamsAndData <- function(cardinalities, mObs, maxParents) {
-  return(list(
-    getAlphas = function(node, parents) {
-      getBDEuParams(node, parents, cardinalities, equivalentSampleSize=1)
-    },
-    countSuffStats = createSufficientStatsProvider(cardinalities, mObs),
-    maxParents = maxParents,
-    numberOfVariables = length(cardinalities)
-    ))
-}
-
-
 # Computes log(sum(exp(x)) in a way where numerical stability is improved.
 #
 # With large number of observations log scores are large negative and cause underflow
