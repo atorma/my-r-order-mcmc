@@ -3,15 +3,18 @@ mObs <- as.matrix(training_data)
 varNames <- names(training_data)
 numNodes <- length(varNames)
 cardinalities <- rep(3, numNodes)
-maxParents <- 3
 
+maxParents <- 3
+equivalentSampleSize <- 10
+
+# We must compute the probabilities of these vectors
 mTestObs <- as.matrix(test_data)
 
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats, equivalentSampleSize)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
@@ -34,7 +37,7 @@ functFamiliesAndLogStructureScores <- function(node, vOrder) {
 
 
 # order-MCMC
-numSamples <- 50000
+numSamples <- 25000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 plot(rowSums(result1$logScores), type="l", col="red")
@@ -46,11 +49,8 @@ lines(rowSums(result2$logScores), type="l", col="blue")
 # Combine samples of two chains
 sampleIdx <- seq(from=5000, to=numSamples, by=200)
 samples1 <- result1$samples[sampleIdx,]
-sampleLogScores1 <- result1$logScores[sampleIdx,]
 samples2 <- result2$samples[sampleIdx,]
-sampleLogScores2 <- result2$logScores[sampleIdx,]
 samples <- rbind(samples1, samples2)
-sampleLogScores <- rbind(sampleLogScores1, sampleLogScores2)
 
 # Compute edge probabilities
 system.time(mEdgeProb <- getEdgeProbabilities(samples, functFamiliesAndLogStructureScores))
