@@ -57,10 +57,17 @@ getLogLocalStructureScore <- function(node, vParents, vOrder, functLogLocalStruc
 
 # Factory that returns a function log score(Xi, Pa(X) | D, <)
 #  
-# This version
-# 1. Allows reuse of a sufficient statistics function (e.g. a cache)
-# 2. Uses prior P(G | <) = P(G) = product of (numNodes-1 choose numParents)^(-1) regardless of order
-createLogLocalStructureScoringFunction <- function(cardinalities, functSufficientStats, equivalentSampleSize=1) {
+# cardinalities:
+#   cardinalities[i] is the cardinality of domain of node i
+# functSufficientStats:
+#   f(node, parents) that returns a matrix N so that N[j, k] is the count of observations
+#   where node has been observed in state k when parents were in j:th configuration
+# functBDPriorParams:
+#   f(node, parents) that returns matrix alpha so that alpha[j, k] is the Dirichlet parameter 
+#   (prior count + 1) when node is observed in state k and its parents are in j:th configuration
+#
+# See getIndexFromConfig() for configuration to index mapping
+createLogLocalStructureScoringFunction <- function(cardinalities, functBDPriorParams, functSufficientStats) {
   
   numNodes <- length(cardinalities)
   
@@ -68,12 +75,8 @@ createLogLocalStructureScoringFunction <- function(cardinalities, functSufficien
     -1*lchoose(numNodes-1, length(vParents))
   }
   
-  getAlphas = function(node, parents) {
-    getBDEuParams(node, parents, cardinalities, equivalentSampleSize)
-  }
-
   logLocalDataLikelihood <- function(node, vParents) {
-    getLogLocalDataLikelihood(node, vParents, getAlphas, functSufficientStats)
+    getLogLocalDataLikelihood(node, vParents, functBDPriorParams, functSufficientStats)
   }
   
   logLocalStructureScore <- function(node, vParents) {

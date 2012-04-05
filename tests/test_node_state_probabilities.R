@@ -12,7 +12,8 @@ mObs[4,] <- c(1, 1, 2)
 # function under test f(node, nodeState, parents, parentStates)
 # should return "E[theta_ijk | alpha_ij, D] = (N_ijk + alpha_ijk)/(N_ij + alpha_ij)",
 # alpha_ijk = equivSampleSize/(r_i*q_i)
-getStateProb <- createStateProbabilityFunction(cardinalities, mObs, equivalentSampleSize=1)
+functBDeuPriorParams <- createBDeuPriorParamsProvider(cardinalities, equivalentSampleSize=1)
+getStateProb <- createStateProbabilityFunction(cardinalities, mObs, functBDeuPriorParams)
 
 test_that("State probability when node has no parents", {
   expect_that( getStateProb(node=1, nodeState=1), equals( (3 + 1/2)/(4 + 2*1/2) ) ) 
@@ -76,7 +77,7 @@ thetas.node3.parents1And2 <- matrix(c((0 + 1/12)/(1 + 3/12), (1 + 1/12)/(1 + 3/1
                                       (0 + 1/12)/(0 + 3/12), (0 + 1/12)/(0 + 3/12), (0 + 1/12)/(0 + 3/12)), #(2, 2)
                                     nrow=4, ncol=3, byrow=TRUE)
 
-getStateProbMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, equivalentSampleSize=1)
+getStateProbMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, functBDeuPriorParams)
 
 test_that("Parameter table for each state and parent configuration computed", {
   expect_that(getStateProbMatrix(node=3),                  equals(thetas.node3.noparents))
