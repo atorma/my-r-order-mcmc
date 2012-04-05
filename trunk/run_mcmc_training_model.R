@@ -1,20 +1,27 @@
-# Data and parameters for MCMC
-mObs <- as.matrix(training_data)
+# Input data 
+mObs <- as.matrix(training_data) # training samples
 varNames <- names(training_data)
 numNodes <- length(varNames)
 cardinalities <- rep(3, numNodes)
 
-maxParents <- 3
-equivalentSampleSize <- 10
+mTestObs <- as.matrix(test_data) # We must compute the probabilities of these vectors
 
-# We must compute the probabilities of these vectors
-mTestObs <- as.matrix(test_data)
+mDevelObs <- as.matrix(devel_data) # We know the probabilities of these vectors. They are a biased sample, not to be used for learning!
+vDevelProbs <- devel_probs[,1] # Known vector probsl, already normalized
+
+
+# Scoring and parameters
+
+maxParents <- 4
+
+# We use a K2 prior
+functBDPriorParams <- createBDK2PriorParamsProvider(cardinalities, alpha=1)
 
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats, equivalentSampleSize)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functBDPriorParams, functSuffStats)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
@@ -36,21 +43,29 @@ functFamiliesAndLogStructureScores <- function(node, vOrder) {
 }
 
 
-# order-MCMC
-numSamples <- 25000
+# Run the order-MCMC using four independent chains. They seem to converge after 1000 steps.
+
+numSamples <- 5000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 plot(rowSums(result1$logScores), type="l", col="red")
 # Chain 2
 system.time(result2 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 lines(rowSums(result2$logScores), type="l", col="blue")
+# Chain 3
+system.time(result3 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+lines(rowSums(result3$logScores), type="l", col="green")
+# Chain 4
+system.time(result4 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+lines(rowSums(result4$logScores), type="l", col="yellow")
 
-
-# Combine samples of two chains
-sampleIdx <- seq(from=5000, to=numSamples, by=200)
+# Combine samples of the chains. Burn-in 1000 samples, thinning every 100 samples
+sampleIdx <- seq(from=1000, to=numSamples, by=100)
 samples1 <- result1$samples[sampleIdx,]
 samples2 <- result2$samples[sampleIdx,]
-samples <- rbind(samples1, samples2)
+samples3 <- result3$samples[sampleIdx,]
+samples4 <- result4$samples[sampleIdx,]
+samples <- rbind(samples1, samples2, samples3, samples4)
 
 # Compute edge probabilities
 system.time(mEdgeProb <- getEdgeProbabilities(samples, functFamiliesAndLogStructureScores))
@@ -77,8 +92,8 @@ edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing
 rownames(edgeRanking) <- NULL
 
 # compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 100),] # assuming all orders equally probable!
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
+sampleSubset <- samples[sample(1:nrow(samples), 20),] # assuming all orders equally probable!
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functBDPriorParams, functSuffStats)
 system.time({
   vEstimatedTestProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
