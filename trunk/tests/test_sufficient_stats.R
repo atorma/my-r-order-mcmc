@@ -9,7 +9,6 @@ mObs[4,] <- c(1, 1, 3)
 
 
 getSuffStat <- createSufficientStatsProvider(cardinalities, mObs)
-getPostCounts <- createPosteriorCountsProvider(cardinalities, mObs, equivalentSampleSize=1)
 
 # Case when node has parents
 node <- 3
@@ -22,13 +21,6 @@ expectedSuffStat[1,3] <- 1
 test_that("Sufficient statistics by each parent configuration reported as matrix when node has parents", {
   expect_that(getSuffStat(node, parents), equals(expectedSuffStat))
 })
-
-
-expectedPostCounts <- expectedSuffStat + 1/(3*2*2)
-test_that("Posterior counts matrix computed using BDeu prior", {
-  expect_that(getPostCounts(node, parents), equals(expectedPostCounts))
-})
-
 
 
 # Case when node has no parents

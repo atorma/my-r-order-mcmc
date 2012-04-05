@@ -19,7 +19,7 @@
 # The returned function caches parameters tables.
 #
 # See functions getIndexFromConfig() and getConfigFromIndex()
-createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL, useCache=TRUE) {
+createStateProbabilityMatrixFunction <- function(cardinalities, mObs, functBDPriorParams, functSuffStats=NULL, useCache=TRUE) {
   if (is.null(functSuffStats)) {
     getSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
   } else {
@@ -53,7 +53,7 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
       # assumption: getSuffStats() returns parent states 
       # i.e. rows of matrix are in order as described above
       suffStats <- getSuffStats(node, parents, parentsSorted)
-      alphas <- getBDEuParams(node, parents, cardinalities, equivalentSampleSize)
+      alphas <- functBDPriorParams(node, parents)
       posteriorCounts <- suffStats + alphas
       
       thetasExpected <- posteriorCounts/rowSums(posteriorCounts)
@@ -72,9 +72,9 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, equivalent
 #
 # Uses Bayesian Dirichlet Equivalent uniform (BDEu) prior 
 # with given equivalent sample size.
-createStateProbabilityFunction <- function(cardinalities, mObs, equivalentSampleSize=1, functSuffStats=NULL, useCache=FALSE) {
+createStateProbabilityFunction <- function(cardinalities, mObs, functBDPriorParams, functSuffStats=NULL, useCache=FALSE) {
   
-  getThetaMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, equivalentSampleSize, functSuffStats, useCache)
+  getThetaMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, functBDPriorParams, functSuffStats, useCache)
   
   return(function(node, nodeState, parents=integer(0), parentStates=integer(0), parentsSorted=FALSE) {
     #cat("Requested node", node, "state", nodeState, "parents", parents, "configuration", parentStates, fill=T)
@@ -214,7 +214,9 @@ getStateVectorProbability <- function(mStates, mOrders, functNodeStateProbabilit
   # Mean P(X | D) over all the input orders 
   getMeanProbabilityOverOrders <- function(vStates) {
     probabilities <- sapply(1:nrow(mOrders), function(orderIndex) getProbabilityGivenOrder(vStates, orderIndex))
-    cat("Computed mean probability of state", stateIndex, "over all orders", fill=T)
+    if (stateIndex %% 100 == 0) {
+      cat("Computed mean probability of state", stateIndex, "over all orders", fill=T)
+    }
     stateIndex <<- stateIndex + 1
     return(mean(probabilities))
   }

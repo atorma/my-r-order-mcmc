@@ -35,38 +35,6 @@ getIndexFromConfig <- function(stateConfig, cardinalities) {
 }
 
 
-
-# Computes indexes of a configuration of variables that is a subset of 
-# a full variable set with cardinalities as defined in vector cardinalities.
-# TODO it isn't too easy :)
-getIndexesFromConfig <- function(stateConfig, variables, cardinalities) {
-  cVars <- length(stateConfig)
-  
-  if (cVars != length(variables)) {
-    stop("Numbers of variables implied by stateConfig and variables not equal")
-  }
-  
-  if (cVars == length(cardinalities)) {
-    return(getIndexFromConfig(stateConfig, cardinalities))
-  }
-  
-  # Assuming variables are sorted ascending!
-  indexesOfFixedVars <- vector()
-  for (i in 1:cVars) {
-    
-  }
-  
-  allVariables <- 1:length(cardinalities)
-  freeVarsSoFar <- allVariables[allVariables < variables[1]]
-  indexes <- vector()
-  for (i in 1:cVars) {
-    temp <- 1:prod(cardinalities[freeVars])
-  }
-  
-  return(0)
-}
-
-
 # Computes the configuration corresponding to a unique index assuming
 # the index has been computed by variying the states 
 # the quicker the smaller a node's index in the 

@@ -6,8 +6,11 @@ cardinality <- 3
 cardinalities <- rep(cardinality, numNodes)
 
 maxParents <- 4
-# Equivalent sample size in BDEu prior
-equivalentSampleSize <- 10
+# Parameter prior producing a K2 type Dirichlet score: all Dirichlet params are equal.
+# Hard-coded for all cardinalities being same
+functBDPriorParams <- function(node, parents) {
+  matrix(10, nrow=cardinality^length(parents), ncol=cardinality)
+}
 
 # Development vectors to compute probabilities for. 
 mDevelObs <- as.matrix(devel_data)
@@ -21,7 +24,7 @@ vDevelProbs <- devel_probs[,1] # already normalized
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
 
 # Local structure score function log(score(Xi, Pa(Xi) | D, <)) 
-functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats, equivalentSampleSize=equivalentSampleSize)
+functLogLocalStructureScore <- createLogLocalStructureScoringFunction(cardinalities, functSuffStats, functBDPriorParams=functBDPriorParams)
 
 # Cache all the local structure scores 
 system.time(scoreList <- computeFamilyScores(functLogLocalStructureScore, numNodes, maxParents))
@@ -57,7 +60,7 @@ samples <- result1$samples[sampleIdx,]
 
 
 # compute the predicted test vector probabilities using MCMC samples from the training model
-sampleSubset <- samples[sample(1:nrow(samples), 2),] # assuming all sampled orders scored equally!
+sampleSubset <- samples[sample(1:nrow(samples), 3),] # assuming all sampled orders scored equally!
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functSuffStats=functSuffStats)
 system.time({
   vEstimatedObsProbs <- getStateVectorProbability(mDevelObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
