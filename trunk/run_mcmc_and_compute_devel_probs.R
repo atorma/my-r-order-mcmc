@@ -17,7 +17,7 @@ vDevelProbs <- devel_probs[,1] # already normalized
 
 
 # We use a K2 prior
-functBDPriorParams <- createBDK2PriorParamsProvider(cardinalities, alpha=2)
+functBDPriorParams <- createBDK2PriorParamsProvider(cardinalities, alpha=0.175)
 
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
@@ -61,39 +61,16 @@ samples1 <- result1$samples[sampleIdx,]
 samples2 <- result2$samples[sampleIdx,]
 samples <- rbind(samples1, samples2)
 
-# Compute edge probabilities
-system.time(mEdgeProb <- getEdgeProbabilities(samples, functFamiliesAndLogStructureScores))
-rownames(mEdgeProb) <- varNames
-colnames(mEdgeProb) <- varNames
 
-# List of edge probabilities
-sourceNames <- character(numNodes^2 - numNodes)
-targetNames <- character(numNodes^2 - numNodes)
-edgeProbs <- numeric(numNodes^2 - numNodes)
-row <- 1
-for (i in 1:numNodes) {
-  for (j in 1:numNodes) {
-    if (i != j) {
-      sourceNames[row] <- varNames[i]
-      targetNames[row] <- varNames[j]
-      edgeProbs[row] <- mEdgeProb[i,j]
-      row <- row+1
-    }
-  }
-}
-edgeRanking <- data.frame(source=sourceNames, target=targetNames, probability=edgeProbs)
-edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing=TRUE), ]
-rownames(edgeRanking) <- NULL
-
-# compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 2),] # assuming all orders equally probable!
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functBDPriorParams, functSuffStats)
+# compute the predicted test vector probabilities using a subset of the samples
+sampleSubset <- samples[sample(1:nrow(samples), 5),] 
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, functBDPriorParams, functSuffStats)
 system.time({
   vEstimatedDevelProbs <- getStateVectorProbability(mDevelObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 
 # normalize estimated vector probabilities
-vEstimatedDevekObsProbsNorm <- vEstimatedDevelProbs/sum(vEstimatedDevelProbs)
+vEstimatedDevelObsProbsNorm <- vEstimatedDevelProbs/sum(vEstimatedDevelProbs)
 
-# So what's our KL-divergence
-getKLDivergence(vDevelProbs, vEstimatedDevekObsProbsNorm)
+# So what's our KL-divergence?
+getKLDivergence(vDevelProbs, vEstimatedDevelObsProbsNorm)

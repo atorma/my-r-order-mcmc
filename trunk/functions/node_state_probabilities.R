@@ -18,14 +18,28 @@
 #
 # The returned function caches parameters tables.
 #
-# See functions getIndexFromConfig() and getConfigFromIndex()
-createStateProbabilityMatrixFunction <- function(cardinalities, mObs, functBDPriorParams, functSuffStats=NULL, useCache=TRUE) {
-  if (is.null(functSuffStats)) {
-    getSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
-  } else {
-    getSuffStats <- functSuffStats
-  }
-  
+# cardinalities: 
+#   cardinalities[i] is the cardinality of the domain of node i
+# functBDPriorParams: 
+#   functBDPriorParams(node, parents) returns the BD prior 
+#   parameter matrix for a family (node, parents)
+# functSuffStats
+#   functSuffStats(node, parents[, parentsSorted]) returns the 
+#   sufficent stats matrix for a family (node, parents).
+#   Each row corresponds to a parent configuration and rows must 
+#   have the same order as in matrix from functBDPriorParams. 
+#   Optional boolean parameter parentsSorted is for optimisation 
+#   and indicates whether parents is already sorted ascending 
+#   by node number.
+# useCache (optional, default FALSE):
+#   Whether to cache the results for reuse or not. Caching may 
+#   cause high memory consumption with little benefit if sufficient
+#   if sufficient stats are already cached.
+#
+# See also functions getIndexFromConfig() and getConfigFromIndex() 
+# for how parent configurations are expected to be indexed.
+createStateProbabilityMatrixFunction <- function(functBDPriorParams, functSuffStats, useCache=TRUE) {
+
   if (useCache) {
     cache <- hash()
     getKey <- function(node, parents) {
@@ -50,9 +64,9 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, functBDPri
     }
     
     if (is.null(thetasExpected)) {
-      # assumption: getSuffStats() returns parent states 
+      # assumption: functSuffStats() returns parent states 
       # i.e. rows of matrix are in order as described above
-      suffStats <- getSuffStats(node, parents, parentsSorted)
+      suffStats <- functSuffStats(node, parents, parentsSorted)
       alphas <- functBDPriorParams(node, parents)
       posteriorCounts <- suffStats + alphas
       
@@ -70,11 +84,29 @@ createStateProbabilityMatrixFunction <- function(cardinalities, mObs, functBDPri
 # such that that f returns the posterior probility
 # of the node's state given parents and their states.
 #
-# Uses Bayesian Dirichlet Equivalent uniform (BDEu) prior 
-# with given equivalent sample size.
-createStateProbabilityFunction <- function(cardinalities, mObs, functBDPriorParams, functSuffStats=NULL, useCache=FALSE) {
+# cardinalities: 
+#   cardinalities[i] is the cardinality of the domain of node i
+# functBDPriorParams: 
+#   functBDPriorParams(node, parents) returns the BD prior 
+#   parameter matrix for a family (node, parents)
+# functSuffStats
+#   functSuffStats(node, parents[, parentsSorted]) returns the 
+#   sufficent stats matrix for a family (node, parents).
+#   Each row corresponds to a parent configuration and rows must 
+#   have the same order as in matrix from functBDPriorParams. 
+#   Optional boolean parameter parentsSorted is for optimisation 
+#   and indicates whether parents is already sorted ascending 
+#   by node number.
+# useCache (optional, default FALSE):
+#   Whether to cache the results for reuse or not. Caching may 
+#   cause high memory consumption with little benefit if sufficient
+#   if sufficient stats are already cached.
+#
+# See also functions getIndexFromConfig() and getConfigFromIndex() for 
+# how parent configurations are expected to be indexed.
+createStateProbabilityFunction <- function(cardinalities, functBDPriorParams, functSuffStats, useCache=FALSE) {
   
-  getThetaMatrix <- createStateProbabilityMatrixFunction(cardinalities, mObs, functBDPriorParams, functSuffStats, useCache)
+  getThetaMatrix <- createStateProbabilityMatrixFunction(functBDPriorParams, functSuffStats, useCache)
   
   return(function(node, nodeState, parents=integer(0), parentStates=integer(0), parentsSorted=FALSE) {
     #cat("Requested node", node, "state", nodeState, "parents", parents, "configuration", parentStates, fill=T)
@@ -82,8 +114,7 @@ createStateProbabilityFunction <- function(cardinalities, mObs, functBDPriorPara
     if (length(parents) != length(parentStates)) stop("Inconsistent length of parent and parent state vectors")
     if (length(nodeState) != 1 || length(node) != 1) stop("Only one node and node state allowed")
 
-    # for indexation to be insentitive to parent ordering, we must sort (parents, parentStates) 
-    # by parent node number
+    # for indexation to be insentitive to parent ordering, we must sort (parents, parentStates) by parent node number
     if (!parentsSorted) {
       sortedPerm <- order(parents)
       parents <- parents[sortedPerm]

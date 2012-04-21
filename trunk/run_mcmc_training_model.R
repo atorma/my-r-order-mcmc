@@ -15,7 +15,7 @@ vDevelProbs <- devel_probs[,1] # Known vector probsl, already normalized
 maxParents <- 4
 
 # We use a K2 prior
-functBDPriorParams <- createBDK2PriorParamsProvider(cardinalities, alpha=1)
+functBDPriorParams <- createBDK2PriorParamsProvider(cardinalities, alpha=0.25)
 
 # Function for sufficient stats
 functSuffStats <- createSufficientStatsProvider(cardinalities, mObs)
@@ -91,9 +91,9 @@ edgeRanking <- data.frame(source=sourceNames, target=targetNames, probability=ed
 edgeRanking <- edgeRanking[order(edgeProbs, sourceNames, targetNames, decreasing=TRUE), ]
 rownames(edgeRanking) <- NULL
 
-# compute the predicted test vector probabilities using all the samples
-sampleSubset <- samples[sample(1:nrow(samples), 20),] # assuming all orders equally probable!
-functNodeStateProb <- createStateProbabilityFunction(cardinalities, mObs, functBDPriorParams, functSuffStats)
+# compute the predicted test vector probabilities using a subset of the samples
+sampleSubset <- samples[sample(1:nrow(samples), 20),] 
+functNodeStateProb <- createStateProbabilityFunction(cardinalities, functBDPriorParams, functSuffStats)
 system.time({
   vEstimatedTestProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })

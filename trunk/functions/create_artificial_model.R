@@ -68,7 +68,7 @@ generateMultinomialParams <- function(mAdj, cardinalities, cPriorSamples=1) {
   for (node in 1:cNodes) {
     parents <- getParents(node, mAdj)
     cParentStates <- prod(cardinalities[parents])
-    alpha <- getAlphaBDEu(cPriorSamples, cardinalities[node], cParentStates)
+    alpha <- getAlphaBDeu(cPriorSamples, cardinalities[node], cParentStates)
     arrTheta[1:cParentStates,,node] <- rdirichlet(cParentStates, rep(alpha, cardinalities[node]))
   }
   
