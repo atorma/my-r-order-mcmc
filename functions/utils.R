@@ -35,6 +35,22 @@ getRocCurve <- function(mPredictedEdgeProbs, mActualAdjacencies) {
   return(roc)
 }
 
+# Computes AUROC from the result of getRocCurve.
+getAuroc <- function(roc) {
+  # Order the points increasing by false positive rate
+  ordering <- order(roc[,1])
+  roc <- roc[ordering,]
+  
+  lastPoint <- nrow(roc)
+  # Numeric integration using trapezoidial rule
+  a <- roc[-lastPoint, 1]
+  fa <- roc[-lastPoint, 2]
+  b <- roc[-1, 1]
+  fb <- roc[-1, 2]
+  auroc <- sum((b - a)*(fa + fb)/2)
+  return(auroc)
+}
+
 # Computes Kullback-Leibler divergence criterion.
 #
 # p: true probabilities
