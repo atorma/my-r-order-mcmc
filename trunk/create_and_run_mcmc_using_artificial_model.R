@@ -6,11 +6,12 @@ cardinalities <- rep(3, numNodes)
 maxParents <- 4
 mAdj <- generateRandomDag(numNodes, maxParents)
 arrThetas <- generateMultinomialParams(mAdj, cardinalities)
-mTrainingObs <- generateSamplesFromModel(mAdj, arrThetas, 500) # training samples
+mTrainingObs <- generateSamplesFromModel(mAdj, arrThetas, 500) # draw training samples
 
-mTestObs <- generateSamplesFromModel(mAdj, arrThetas, 500) # more network states for testing how well probability densities are estimated
+mTestObs <- generateSamplesFromModel(mAdj, arrThetas, 2500) # further samples for testing KL-divergence
 mTestObs <- as.matrix(unique.data.frame(mTestObs))
-vDevelProbs <- computeObsProbs(mAdj, arrThetas, mTestObs)
+mTestObs <- mTestObs[1:min(200, nrow(mTestObs)),]
+vTestProbs <- computeStateProbs(mAdj, arrThetas, mTestObs)
 
 
 
@@ -55,6 +56,7 @@ logScoreBestOrder <- sum(getLogLocalOrderScores(1:numNodes, functLogLocalOrderSc
 
 
 # order-MCMC
+
 numSamples <- 5000
 # Chain 1
 system.time(result1 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
@@ -62,13 +64,20 @@ plot(rowSums(result1$logScores), type="l", col="red")
 # Chain 2
 system.time(result2 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
 lines(rowSums(result2$logScores), type="l", col="blue")
+# Chain 3
+system.time(result3 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+lines(rowSums(result3$logScores), type="l", col="green")
+# Chain 4
+system.time(result4 <- runOrderMCMC(numNodes, maxParents, functLogLocalOrderScore, numSamples))
+lines(rowSums(result4$logScores), type="l", col="yellow")
 
-# Combine samples from all the chains
-sampleIdx <- seq(from=1000, to=numSamples, by=20)
+# Combine samples of the chains. Burn-in 1000 samples, thinning every 100 samples
+sampleIdx <- seq(from=1000, to=numSamples, by=100)
 samples1 <- result1$samples[sampleIdx,]
 samples2 <- result2$samples[sampleIdx,]
-samples <- rbind(samples1, samples2)
-
+samples3 <- result3$samples[sampleIdx,]
+samples4 <- result4$samples[sampleIdx,]
+samples <- rbind(samples1, samples2, samples3, samples4)
 
 # Compute edge probabilities
 system.time(mEdgeProb <- getEdgeProbabilities(samples, functFamiliesAndLogStructureScores))
@@ -80,15 +89,12 @@ plot(roc, type="l", xlim=c(0,1), ylim=c(0,1), col="blue")
 lines(xy, col="red")
 getAuroc(roc)
 
-# Predict probability of each unique development state vector using a subset of the mcmc samples
-sampleSubset <- samples[sample(1:nrow(samples), nrow(samples)),] # now using all samples
+# Predict probability of each test state vector using a subset of the mcmc samples
+sampleSubset <- samples[sample(1:nrow(samples), 10),] 
 functNodeStateProb <- createStateProbabilityFunction(cardinalities, functBDPriorParams, functSuffStats)
 system.time({
-  vEstimatedDevelProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
+  vEstimatedTestProbs <- getStateVectorProbability(mTestObs, sampleSubset, functNodeStateProb, functFamiliesAndLogStructureScores)
 })
 
-# normalize the estimated vector probabilities
-vEstimatedDevelProbsNorm <- vEstimatedDevelProbs/sum(vEstimatedDevelProbs)
-
 # So what's our KL-divergence?
-getKLDivergence(vDevelProbs, vEstimatedDevelProbsNorm)
+getKLDivergence(vTestProbs, vEstimatedTestProbs)
