@@ -61,5 +61,10 @@ getKLDivergence <- function(p, q) {
   p <- p/sum(p)
   q <- q/sum(q)
   
-  sum(p*log(p/q))
+  terms <- p*log(p/q)
+  # 0ln0 is interpreted as 0
+  terms[p == 0] <- 0
+  
+  KLD <- sum(terms)
+  return(KLD)
 }

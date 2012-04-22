@@ -123,12 +123,14 @@ generateSamplesFromModel <- function(mAdj, arrTheta, size) {
 }
 
 
-# Computes the probabilities of generated observation vectors,
-# assuming nodes are indexed in a topological order.
+# Computes the probabilities of state vectors.
+#
+# It's assumed that nodes are indexed in their
+# topological order according to mAdj.
 #
 # TODO allow varying node state cardinality. 
 # It's now fixed to number of columns in arrTheta (max cardinality).
-computeObsProbs <- function(mAdj, arrTheta, mObs) {
+computeStateProbs <- function(mAdj, arrTheta, mStates) {
   cardinality <- dim(arrTheta)[2]
   
   getObsProb <- function(vStates) {
@@ -147,6 +149,6 @@ computeObsProbs <- function(mAdj, arrTheta, mObs) {
     return(prod(probs))
   }
   
-  return( apply(mObs, 1, getObsProb) )
+  return( apply(mStates, 1, getObsProb) )
   
 }
