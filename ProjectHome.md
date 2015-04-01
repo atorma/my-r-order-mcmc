@@ -1,0 +1,1 @@
+Bayesian network structure learning by MCMC over node orders implemented in R. Developed for a project on probabilistic models.
